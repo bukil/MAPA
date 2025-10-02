@@ -6,7 +6,7 @@
   /* Palette: light pink + white background, deep green text */
   color-scheme: light; /* keep controls in light scheme */
   color: #0f5132; /* deep green for text */
-  background-color: #fff0f5; /* fallback */
+  background-color: #000000; /* fallback */
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -32,8 +32,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   color: inherit;
-  /* Soft pink to white gradient */
-  background: linear-gradient(180deg, #fff0f5 0%, #fff7fa 40%, #ffffff 100%);
+
 }
 
 h1 {
