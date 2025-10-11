@@ -6,7 +6,7 @@
   /* Palette: light pink + white background, deep green text */
   color-scheme: light; /* keep controls in light scheme */
   color: #0f5132; /* deep green for text */
-  background-color: #000000; /* fallback */
+  background-color: #ffffff; /* fallback */
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
