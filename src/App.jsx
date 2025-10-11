@@ -184,11 +184,14 @@ function App() {
   return (
     <main style={{ minHeight: '100vh', background: '#fff', margin: 0 }}>
       <h1 style={{ fontSize: '3rem', fontWeight: 'bold', color: '#222', textAlign: 'left', marginTop: '2rem', marginBottom: '2rem', marginLeft: '2rem', fontFamily: 'Anton, sans-serif' }}>
-        Cigarrete and Smoking Data India
+        Exploring the Links Between Literacy, Salary & Societal Issues in India
       </h1>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', padding: '2rem' }}>
         <div style={{ fontFamily: 'Manrope, sans-serif', fontSize: '1rem', color: '#555', lineHeight: '1.6' }}>
-          <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+          <p>This project explores how literacy rates and income levels relate to various societal issues and crimes in India.
+We wanted to look beyond numbers — to see if education and wealth actually make a society more equal, just, and emotionally stable, or if they also create new challenges.
+
+Through data visualization and analysis, we examined complex relationships between literacy, salary, gender ratio, crime rates, conviction rates, divorce, domestic violence, and student suicides.</p>
         </div>
         
       </div>
@@ -200,6 +203,13 @@ function App() {
           <svg ref={chartRef}></svg>
         </div>
       </div>
+      <footer style={{ padding: '2rem', textAlign: 'center', fontFamily: 'Manrope, sans-serif', fontSize: '0.75rem', color: '#666', borderTop: '1px solid #ddd', marginTop: '2rem' }}>
+        <p style={{ margin: 0, lineHeight: '1.8' }}>
+          <a href="https://bukil.github.io/MAPA/" style={{ color: '#4292c6', textDecoration: 'none' }}>Data visualisation on Salary and Societal Issues</a> © 2025 by <a href="https://bukil.github.io/MAPA/" style={{ color: '#4292c6', textDecoration: 'none' }}>MUKIL | ARINDUM | ABHISHEK | PRADUMN</a> is licensed under <a href="https://creativecommons.org/licenses/by/4.0/" style={{ color: '#4292c6', textDecoration: 'none' }}>Creative Commons Attribution 4.0 International</a>
+          <img src="https://mirrors.creativecommons.org/presskit/icons/cc.svg" alt="CC" style={{ maxWidth: '1em', maxHeight: '1em', marginLeft: '.2em', verticalAlign: 'middle' }} />
+          <img src="https://mirrors.creativecommons.org/presskit/icons/by.svg" alt="BY" style={{ maxWidth: '1em', maxHeight: '1em', marginLeft: '.2em', verticalAlign: 'middle' }} />
+        </p>
+      </footer>
     </main>
   )
 }
