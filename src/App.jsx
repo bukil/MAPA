@@ -6,13 +6,14 @@ import indiaTopoJSON from './map.json'
 
 function App() {
   const svgRef = useRef(null)
+  const chartRef = useRef(null)
 
   useEffect(() => {
     const svg = d3.select(svgRef.current)
     svg.selectAll('*').remove()
-    const width = 420
-    const height = 580
-    const padding = 10
+    const width = 460
+    const height = 600
+    const padding = 15
 
     svg.attr('width', width).attr('height', height)
 
@@ -52,6 +53,134 @@ function App() {
       .text(d => d.properties.name || 'Unknown')
   }, [])
 
+  useEffect(() => {
+    // Create line chart with all Indian states
+    const chartSvg = d3.select(chartRef.current)
+    chartSvg.selectAll('*').remove()
+    
+    const width = 900
+    const height = 550
+    const margin = { top: 40, right: 40, bottom: 120, left: 60 }
+    const chartWidth = width - margin.left - margin.right
+    const chartHeight = height - margin.top - margin.bottom
+
+    chartSvg.attr('width', width).attr('height', height)
+
+    // Indian states and UTs in alphabetical order with sample data
+    const states = [
+      'Andaman & Nicobar Island', 'Andhra Pradesh', 'Arunanchal Pradesh', 'Assam',
+      'Bihar', 'Chandigarh', 'Chhattisgarh', 'Dadara & Nagar Havelli',
+      'Daman & Diu', 'Delhi', 'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh',
+      'Jammu & Kashmir', 'Jharkhand', 'Karnataka', 'Kerala', 'Lakshadweep',
+      'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
+      'Nagaland', 'Odisha', 'Puducherry', 'Punjab', 'Rajasthan', 'Sikkim',
+      'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand',
+      'West Bengal'
+    ].sort()
+
+    // Generate sample data (random values for now)
+    const data = states.map((state, i) => ({
+      state: state,
+      value: Math.floor(Math.random() * 40) + 10,
+      index: i
+    }))
+
+    const g = chartSvg.append('g')
+      .attr('transform', `translate(${margin.left}, ${margin.top})`)
+
+    // Scales
+    const xScale = d3.scaleLinear()
+      .domain([0, data.length - 1])
+      .range([0, chartWidth])
+
+    const yScale = d3.scaleLinear()
+      .domain([0, d3.max(data, d => d.value)])
+      .range([chartHeight, 0])
+
+    // Create line generator
+    const line = d3.line()
+      .x(d => xScale(d.index))
+      .y(d => yScale(d.value))
+      .curve(d3.curveMonotoneX)
+
+    // Add line path
+    g.append('path')
+      .datum(data)
+      .attr('fill', 'none')
+      .attr('stroke', '#4292c6')
+      .attr('stroke-width', 3)
+      .attr('d', line)
+
+    // Add dots
+    g.selectAll('.dot')
+      .data(data)
+      .enter()
+      .append('circle')
+      .attr('class', 'dot')
+      .attr('cx', d => xScale(d.index))
+      .attr('cy', d => yScale(d.value))
+      .attr('r', 4)
+      .attr('fill', '#2171b5')
+      .on('mouseover', function(event, d) {
+        d3.select(this).attr('r', 6).attr('fill', '#08519c')
+      })
+      .on('mouseout', function(event, d) {
+        d3.select(this).attr('r', 4).attr('fill', '#2171b5')
+      })
+      .append('title')
+      .text(d => `${d.state}: ${d.value}%`)
+
+    // Add x-axis with state names
+    const xAxis = d3.axisBottom(xScale)
+      .tickValues(data.map(d => d.index))
+      .tickFormat(i => data[i].state)
+
+    g.append('g')
+      .attr('transform', `translate(0, ${chartHeight})`)
+      .call(xAxis)
+      .selectAll('text')
+      .attr('transform', 'rotate(-65)')
+      .style('text-anchor', 'end')
+      .style('font-family', 'Manrope, sans-serif')
+      .style('font-size', '9px')
+
+    // Add y-axis
+    g.append('g')
+      .call(d3.axisLeft(yScale))
+      .style('font-family', 'Manrope, sans-serif')
+      .style('font-size', '11px')
+
+    // Add grid lines
+    g.append('g')
+      .attr('class', 'grid')
+      .call(d3.axisLeft(yScale)
+        .tickSize(-chartWidth)
+        .tickFormat('')
+      )
+      .style('stroke', '#e0e0e0')
+      .style('stroke-opacity', 0.7)
+
+    // Add chart title
+    chartSvg.append('text')
+      .attr('x', width / 2)
+      .attr('y', 20)
+      .attr('text-anchor', 'middle')
+      .style('font-family', 'Manrope, sans-serif')
+      .style('font-size', '16px')
+      .style('font-weight', 'bold')
+      .text('Smoking Prevalence by State (%)')
+
+    // Add y-axis label
+    chartSvg.append('text')
+      .attr('transform', 'rotate(-90)')
+      .attr('x', -height / 2)
+      .attr('y', 20)
+      .attr('text-anchor', 'middle')
+      .style('font-family', 'Manrope, sans-serif')
+      .style('font-size', '13px')
+      .text('Prevalence (%)')
+  }, [])
+
   return (
     <main style={{ minHeight: '100vh', background: '#fff', margin: 0 }}>
       <h1 style={{ fontSize: '3rem', fontWeight: 'bold', color: '#222', textAlign: 'left', marginTop: '2rem', marginBottom: '2rem', marginLeft: '2rem', fontFamily: 'Anton, sans-serif' }}>
@@ -67,8 +196,8 @@ function App() {
         <div style={{ borderRight: '2px solid #ddd', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', overflow: 'hidden' }}>
           <svg ref={svgRef}></svg>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-          <p style={{ fontFamily: 'Manrope, sans-serif', color: '#999', fontSize: '1rem' }}>Content Area</p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', overflowX: 'auto' }}>
+          <svg ref={chartRef}></svg>
         </div>
       </div>
     </main>
