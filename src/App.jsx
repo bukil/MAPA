@@ -10,8 +10,9 @@ function App() {
   useEffect(() => {
     const svg = d3.select(svgRef.current)
     svg.selectAll('*').remove()
-    const width = 450
+    const width = 420
     const height = 580
+    const padding = 10
 
     svg.attr('width', width).attr('height', height)
 
@@ -19,15 +20,19 @@ function App() {
     const geoData = topojson.feature(indiaTopoJSON, indiaTopoJSON.objects.india)
     
     const projection = d3.geoMercator()
-      .fitSize([width, height], geoData)
+      .fitSize([width - padding * 2, height - padding * 2], geoData)
     const path = d3.geoPath().projection(projection)
+    
+    // Add a group element with translation for padding
+    const g = svg.append('g')
+      .attr('transform', `translate(${padding}, ${padding})`)
 
     // Color scale for choropleth
     const colorScale = d3.scaleQuantize()
       .domain([0, 100])
       .range(['#f7fbff', '#deebf7', '#c6dbef', '#9ecae1', '#6baed6', '#4292c6', '#2171b5', '#08519c', '#08306b'])
 
-    svg.selectAll('path')
+    g.selectAll('path')
       .data(geoData.features)
       .enter()
       .append('path')
@@ -58,12 +63,13 @@ function App() {
         </div>
         
       </div>
-      <div style={{ margin: '2rem', height: '600px', border: '2px solid #ddd', borderRadius: '0px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 0 }}>
-        <div style={{ borderRight: '2px solid #ddd', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+      <div style={{ margin: '2rem', height: '600px', border: '2px solid #ddd', borderRadius: '0px', display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 0 }}>
+        <div style={{ borderRight: '2px solid #ddd', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', overflow: 'hidden' }}>
           <svg ref={svgRef}></svg>
         </div>
-        
-        
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <p style={{ fontFamily: 'Manrope, sans-serif', color: '#999', fontSize: '1rem' }}>Content Area</p>
+        </div>
       </div>
     </main>
   )
