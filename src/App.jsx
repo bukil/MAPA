@@ -10,8 +10,8 @@ function App() {
   useEffect(() => {
     const svg = d3.select(svgRef.current)
     svg.selectAll('*').remove()
-    const width = 350
-    const height = 550
+    const width = 450
+    const height = 580
 
     svg.attr('width', width).attr('height', height)
 
