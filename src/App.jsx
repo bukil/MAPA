@@ -8,6 +8,8 @@ function App() {
   const svgRef = useRef(null)
   const svgRef2 = useRef(null)
   const chartRef = useRef(null)
+  const containerRef = useRef(null)
+  const overlayRef = useRef(null)
   
   const [csvData, setCsvData] = useState([])
   const [variable1, setVariable1] = useState('Literacy Rate %')
@@ -330,6 +332,14 @@ function App() {
       .attr('stroke-width', 2)
       .attr('stroke-dasharray', '5,5')
 
+    // Helper: normalize state names for matching
+    const normalizeName = (s) => String(s || '')
+      .toLowerCase()
+      .replace(/&/g, 'and')
+      .replace(/\./g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+
     // Add scatter points
     g.selectAll('.dot')
       .data(scatterData)
@@ -349,14 +359,80 @@ function App() {
           .attr('fill', '#08519c')
           .attr('opacity', 1)
         
-        // Highlight corresponding state on both maps
-        d3.selectAll('path').each(function(mapData) {
-          if (mapData && mapData.properties && mapData.properties.name === d.state) {
-            d3.select(this)
-              .attr('stroke', '#ff0000')
-              .attr('stroke-width', 3)
+        // Highlight corresponding state on both maps and draw connection lines
+        const containerEl = containerRef.current
+        const overlayEl = overlayRef.current
+        if (containerEl && overlayEl) {
+          const containerRect = containerEl.getBoundingClientRect()
+          // ensure overlay size matches container
+          d3.select(overlayEl)
+            .attr('width', containerEl.clientWidth)
+            .attr('height', containerEl.clientHeight)
+          const dotRect = event.currentTarget.getBoundingClientRect()
+          const dotCenter = {
+            x: dotRect.left - containerRect.left + dotRect.width / 2,
+            y: dotRect.top - containerRect.top + dotRect.height / 2,
           }
-        })
+
+          // find matching paths in both maps
+          let map1Center = null
+          d3.select(svgRef.current).selectAll('path').each(function(md) {
+            const name = md && md.properties && md.properties.name
+            if (name && normalizeName(name) === normalizeName(d.state)) {
+              const r = this.getBoundingClientRect()
+              map1Center = { x: r.left - containerRect.left + r.width / 2, y: r.top - containerRect.top + r.height / 2 }
+              d3.select(this).attr('stroke', '#ff0000').attr('stroke-width', 3)
+            }
+          })
+          let map2Center = null
+          d3.select(svgRef2.current).selectAll('path').each(function(md) {
+            const name = md && md.properties && md.properties.name
+            if (name && normalizeName(name) === normalizeName(d.state)) {
+              const r = this.getBoundingClientRect()
+              map2Center = { x: r.left - containerRect.left + r.width / 2, y: r.top - containerRect.top + r.height / 2 }
+              d3.select(this).attr('stroke', '#ff0000').attr('stroke-width', 3)
+            }
+          })
+
+          const overlay = d3.select(overlayEl)
+          overlay.selectAll('*').remove()
+
+          const drawProjectile = (from, to, stroke, dotFill) => {
+            const dx = to.x - from.x
+            const dy = to.y - from.y
+            const dist = Math.hypot(dx, dy)
+            const arc = Math.min(140, Math.max(40, dist * 0.25))
+            const cx = (from.x + to.x) / 2
+            const cy = (from.y + to.y) / 2 - arc // arc upwards
+
+            const path = overlay.append('path')
+              .attr('d', `M${from.x},${from.y} Q${cx},${cy} ${to.x},${to.y}`)
+              .attr('fill', 'none')
+              .attr('stroke', stroke)
+              .attr('stroke-width', 2)
+              .attr('stroke-dasharray', '6,6')
+              .attr('opacity', 0.95)
+
+            const len = path.node().getTotalLength()
+            const projectile = overlay.append('circle')
+              .attr('r', 5)
+              .attr('fill', dotFill || stroke)
+              .attr('cx', from.x)
+              .attr('cy', from.y)
+
+            projectile
+              .transition()
+              .duration(900)
+              .ease(d3.easeCubicOut)
+              .tween('move', () => t => {
+                const p = path.node().getPointAtLength(t * len)
+                projectile.attr('cx', p.x).attr('cy', p.y)
+              })
+          }
+
+          if (map1Center) drawProjectile(dotCenter, map1Center, '#4292c6', '#4292c6')
+          if (map2Center) drawProjectile(dotCenter, map2Center, '#fd8d3c', '#fd8d3c')
+        }
       })
       .on('mouseout', function(event, d) {
         d3.select(this)
@@ -368,6 +444,10 @@ function App() {
         d3.selectAll('path')
           .attr('stroke', '#333')
           .attr('stroke-width', 0.5)
+        // Clear overlay lines
+        if (overlayRef.current) {
+          d3.select(overlayRef.current).selectAll('*').remove()
+        }
       })
       .append('title')
       .text(d => `${d.state}\n${variable1}: ${d.x.toFixed(2)}\n${variable2}: ${d.y.toFixed(2)}`)
@@ -496,7 +576,7 @@ Through data visualization and analysis, we examined complex relationships betwe
         </div>
       </div>
 
-      <div style={{ margin: '2rem', border: '2px solid #ddd', borderRadius: '0px', display: 'grid', gridTemplateColumns: '0.6fr 2.4fr', gap: 0 }}>
+  <div ref={containerRef} style={{ position: 'relative', margin: '2rem', border: '2px solid #ddd', borderRadius: '0px', display: 'grid', gridTemplateColumns: '0.6fr 2.4fr', gap: 0 }}>
         <div style={{ borderRight: '2px solid #ddd', display: 'flex', flexDirection: 'column', gap: 0 }}>
           <div style={{ borderBottom: '2px solid #ddd', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1rem', overflow: 'hidden', height: '400px' }}>
             <h3 style={{ fontFamily: 'Manrope, sans-serif', fontSize: '0.85rem', fontWeight: '600', color: '#4292c6', margin: '0 0 0.5rem 0', textAlign: 'center' }}>{variable1}</h3>
@@ -510,6 +590,8 @@ Through data visualization and analysis, we examined complex relationships betwe
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', overflowX: 'auto', height: '800px' }}>
           <svg ref={chartRef}></svg>
         </div>
+        {/* overlay for connection lines */}
+        <svg ref={overlayRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
       </div>
       <footer style={{ padding: '2rem', textAlign: 'center', fontFamily: 'Manrope, sans-serif', fontSize: '0.75rem', color: '#666', borderTop: '1px solid #ddd', marginTop: '2rem' }}>
         <p style={{ margin: 0, lineHeight: '1.8' }}>
