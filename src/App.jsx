@@ -132,6 +132,69 @@ function App() {
       })
   }
 
+  // Draw a compact value badge at a point in the overlay (used to show "other" variable on the other map)
+  const drawValueBadge = (at, color, label, valueText, stateText, id) => {
+    const overlayEl = overlayRef.current
+    const containerEl = containerRef.current
+    if (!overlayEl || !containerEl || !at) return
+    const overlay = d3.select(overlayEl)
+    // Ensure defs for subtle shadow
+    let defs = overlay.select('defs')
+    if (defs.empty()) defs = overlay.append('defs')
+    if (defs.select('#badge-shadow').empty()) {
+      const f = defs.append('filter').attr('id', 'badge-shadow').attr('x', '-20%').attr('y', '-20%').attr('width', '140%').attr('height', '140%')
+      f.append('feDropShadow')
+        .attr('dx', 0)
+        .attr('dy', 2)
+        .attr('stdDeviation', 2)
+        .attr('flood-color', '#000')
+        .attr('flood-opacity', 0.16)
+    }
+    // Group at position with stable id
+    const g = overlay.append('g')
+      .attr('id', id || null)
+      .attr('transform', `translate(${at.x}, ${at.y - 16})`)
+    // State name
+    const title = g.append('text')
+      .text(stateText || '')
+      .attr('text-anchor', 'middle')
+      .attr('dominant-baseline', 'hanging')
+      .style('font-family', 'Manrope, sans-serif')
+      .style('font-size', '11px')
+      .style('font-weight', 700)
+      .attr('fill', '#222')
+      .attr('y', -10)
+    // Value line
+    const line = g.append('text')
+      .text(`${label}: ${valueText}`)
+      .attr('text-anchor', 'middle')
+      .attr('dominant-baseline', 'hanging')
+      .style('font-family', 'Manrope, sans-serif')
+      .style('font-size', '11px')
+      .style('font-weight', 600)
+      .attr('fill', color)
+      .attr('y', 4)
+    // Compute box
+    const bbox1 = title.node().getBBox()
+    const bbox2 = line.node().getBBox()
+    const width = Math.max(bbox1.width, bbox2.width)
+    const height = (bbox2.y + bbox2.height) - (bbox1.y) + 6
+    const px = 8
+    const py = 6
+    g.insert('rect', ':first-child')
+      .attr('x', -width / 2 - px)
+      .attr('y', bbox1.y - py)
+      .attr('width', width + px * 2)
+      .attr('height', height + py * 2)
+      .attr('rx', 8)
+      .attr('ry', 8)
+    .attr('fill', '#ffffff')
+    .attr('fill-opacity', 0.6)
+    .attr('stroke', 'rgba(200,200,200,0.6)')
+      .attr('stroke-width', 1)
+      .attr('filter', 'url(#badge-shadow)')
+  }
+
   // Fast tooltip helpers
   const parseNum = (v) => {
     if (v === undefined || v === null) return undefined
@@ -170,6 +233,29 @@ function App() {
     `
   }
 
+  // Single-variable tooltip (used on maps to reduce confusion)
+  const buildTooltipSingleHTML = (stateCanon, varLabel, color) => {
+    const row = rowByState.get(stateCanon)
+    // Determine which value to read based on provided label
+    const col = varLabel
+    const v = row ? parseNum(row[col]) : undefined
+    const name = displayName(stateCanon)
+    return `
+      <div style="font-weight:700;margin-bottom:4px;color:#222">${name}</div>
+      <table style="border-collapse:collapse;font-size:11px;color:#222">
+        <tbody>
+          <tr>
+            <td style="padding:2px 6px 2px 0;white-space:nowrap;">
+              <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:6px;"></span>
+              ${labelVar(varLabel)}
+            </td>
+            <td style="padding:2px 0 2px 6px;text-align:right;font-weight:600">${v !== undefined ? v.toFixed(2) : 'N/A'}</td>
+          </tr>
+        </tbody>
+      </table>
+    `
+  }
+
   const showTooltip = (html, event) => {
     const el = tooltipRef.current
     const containerEl = containerRef.current
@@ -198,6 +284,53 @@ function App() {
   const hideTooltip = () => {
     const el = tooltipRef.current
     if (el) el.style.display = 'none'
+  }
+
+  // Glass badge helpers (HTML) for "other map" window with frost effect
+  const showBadgeDiv = (at, color, label, valueText, stateText, id) => {
+    const containerEl = containerRef.current
+    if (!containerEl || !at) return
+    let el = containerEl.querySelector(`#${id}`)
+    if (!el) {
+      el = document.createElement('div')
+      el.id = id
+      el.style.position = 'absolute'
+      el.style.pointerEvents = 'none'
+      el.style.zIndex = '9' // below main tooltip (10)
+      containerEl.appendChild(el)
+    }
+    el.style.background = 'rgba(255,255,255,0.6)'
+    el.style.backdropFilter = 'blur(12px) saturate(120%)'
+    el.style.webkitBackdropFilter = 'blur(12px) saturate(120%)'
+    el.style.border = '1px solid rgba(200,200,200,0.6)'
+    el.style.borderRadius = '8px'
+    el.style.boxShadow = '0 8px 20px rgba(0,0,0,0.16)'
+    el.style.padding = '6px 8px'
+    el.style.fontFamily = 'Manrope, sans-serif'
+    el.style.fontSize = '11px'
+    el.style.color = '#222'
+    el.innerHTML = `
+      <div style="font-weight:700;margin-bottom:4px;">${stateText || ''}</div>
+      <table style="border-collapse:collapse;font-size:11px;color:#222"><tbody>
+        <tr>
+          <td style="padding:2px 6px 2px 0;white-space:nowrap;">
+            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:6px;"></span>
+            ${label}
+          </td>
+          <td style="padding:2px 0 2px 6px;text-align:right;font-weight:600">${valueText}</td>
+        </tr>
+      </tbody></table>
+    `
+    const yOffset = 16
+    el.style.transform = `translate(${at.x}px, ${at.y - yOffset}px)`
+    el.style.display = 'block'
+  }
+
+  const hideBadgeDiv = (id) => {
+    const containerEl = containerRef.current
+    if (!containerEl) return
+    const el = containerEl.querySelector(`#${id}`)
+    if (el) el.remove()
   }
 
   // Responsive sizing
@@ -347,6 +480,14 @@ function App() {
         const r = this.getBoundingClientRect()
         const stateCenter = { x: r.left - containerRect.left + r.width / 2, y: r.top - containerRect.top + r.height / 2 }
         const stateName = canonicalName(d.properties && d.properties.name)
+        // ensure overlay dimensions
+        d3.select(overlayEl)
+          .attr('width', containerEl.clientWidth)
+          .attr('height', containerEl.clientHeight)
+        // ensure overlay dimensions
+        d3.select(overlayEl)
+          .attr('width', containerEl.clientWidth)
+          .attr('height', containerEl.clientHeight)
         const combo = 'dadra and nagar haveli and daman and diu'
         let dotInfos = []
         const direct = dotsMap.get(stateName)
@@ -369,15 +510,31 @@ function App() {
           sel.raise().attr('transform', baseT).style('opacity', 1)
           sel.selectAll('path').attr('stroke-width', 2)
         })
-        // Tooltip
-        showTooltip(buildTooltipHTML(stateName), event)
+        // Show the other map's value (variable2) as a badge at the same state's centroid on map2
+        let map2Center = null
+        d3.select(svgRef2.current).selectAll('path').each(function(md) {
+          const name = md && md.properties && md.properties.name
+          if (name && eqState(canonicalName(name), stateName)) {
+            const rr = this.getBoundingClientRect()
+            map2Center = { x: rr.left - containerRect.left + rr.width / 2, y: rr.top - containerRect.top + rr.height / 2 }
+          }
+        })
+        if (map2Center) {
+          const row = rowByState.get(stateName)
+          const v = row ? parseNum(row[variable2]) : undefined
+          const valTxt = v !== undefined ? v.toFixed(2) : 'N/A'
+          showBadgeDiv(map2Center, '#fd8d3c', labelVar(variable2), valTxt, displayName(stateName), 'badge-map2')
+        }
+  // Tooltip: show only this map's variable to avoid mixing both in one window
+  showTooltip(buildTooltipSingleHTML(stateName, variable1, '#4292c6'), event)
       })
       .on('mousemove', function(event) {
         moveTooltip(event)
       })
       .on('mouseout', function() {
         d3.select(this).attr('stroke-width', 0.5).attr('stroke', '#333')
-        if (overlayRef.current) d3.select(overlayRef.current).selectAll('*').remove()
+  if (overlayRef.current) d3.select(overlayRef.current).selectAll('*').remove()
+        hideBadgeDiv('badge-map2')
         // reset highlighted dot if any
         const dotsMap = dotsRef.current
         if (dotsMap) {
@@ -481,15 +638,31 @@ function App() {
           sel.raise().attr('transform', baseT).style('opacity', 1)
           sel.selectAll('path').attr('stroke-width', 2)
         })
-        // Tooltip
-        showTooltip(buildTooltipHTML(stateName), event)
+        // Show the other map's value (variable1) as a badge at the same state's centroid on map1
+        let map1Center = null
+        d3.select(svgRef.current).selectAll('path').each(function(md) {
+          const name = md && md.properties && md.properties.name
+          if (name && eqState(canonicalName(name), stateName)) {
+            const rr = this.getBoundingClientRect()
+            map1Center = { x: rr.left - containerRect.left + rr.width / 2, y: rr.top - containerRect.top + rr.height / 2 }
+          }
+        })
+        if (map1Center) {
+          const row = rowByState.get(stateName)
+          const v = row ? parseNum(row[variable1]) : undefined
+          const valTxt = v !== undefined ? v.toFixed(2) : 'N/A'
+          showBadgeDiv(map1Center, '#4292c6', labelVar(variable1), valTxt, displayName(stateName), 'badge-map1')
+        }
+  // Tooltip: show only this map's variable to avoid mixing both in one window
+  showTooltip(buildTooltipSingleHTML(stateName, variable2, '#fd8d3c'), event)
       })
       .on('mousemove', function(event) {
         moveTooltip(event)
       })
       .on('mouseout', function() {
         d3.select(this).attr('stroke-width', 0.5).attr('stroke', '#333')
-        if (overlayRef.current) d3.select(overlayRef.current).selectAll('*').remove()
+  if (overlayRef.current) d3.select(overlayRef.current).selectAll('*').remove()
+  hideBadgeDiv('badge-map2')
         d3.select(chartRef.current).selectAll('.dot')
           .each(function() {
             const s = d3.select(this)
@@ -498,6 +671,7 @@ function App() {
             s.style('opacity', 0.85)
             s.selectAll('path').attr('stroke-width', 1.5)
           })
+        hideBadgeDiv('badge-map1')
         hideTooltip()
       })
   }, [csvData, variable2, mapSize])
