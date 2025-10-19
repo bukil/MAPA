@@ -1,5 +1,5 @@
 // ...existing code...
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import * as d3 from 'd3'
 import * as topojson from 'topojson-client'
 import indiaTopoJSON from './map.json'
@@ -14,9 +14,13 @@ function App() {
   const mapBox1Ref = useRef(null)
   const mapBox2Ref = useRef(null)
   const chartBoxRef = useRef(null)
+  const tooltipRef = useRef(null)
   const [isMobile, setIsMobile] = useState(false)
   const [mapSize, setMapSize] = useState({ w: 280, h: 380 })
   const [chartSize, setChartSize] = useState({ w: 900, h: 750 })
+  const [csvData, setCsvData] = useState([])
+  const [variable1, setVariable1] = useState('Literacy Rate %')
+  const [variable2, setVariable2] = useState('Monthly Salary (2025)')
 
   // Helpers shared across effects
   const normalizeName = (s) => String(s || '')
@@ -128,6 +132,74 @@ function App() {
       })
   }
 
+  // Fast tooltip helpers
+  const parseNum = (v) => {
+    if (v === undefined || v === null) return undefined
+    const num = parseFloat(String(v).replace(/,/g, '').replace(/\*/g, '').replace(/%/g, '').trim())
+    return Number.isNaN(num) ? undefined : num
+  }
+
+  const rowByState = useMemo(() => {
+    const m = new Map()
+    csvData.forEach(r => {
+      const key = canonicalName(r['State/UT'])
+      if (key) m.set(key, r)
+    })
+    return m
+  }, [csvData])
+
+  const buildTooltipHTML = (stateCanon) => {
+    const row = rowByState.get(stateCanon)
+    const v1 = row ? parseNum(row[variable1]) : undefined
+    const v2 = row ? parseNum(row[variable2]) : undefined
+    const name = displayName(stateCanon)
+    return `
+      <div style="font-weight:700;margin-bottom:6px;color:#222">${name}</div>
+      <table style="border-collapse:collapse;font-size:12px;color:#222">
+        <tbody>
+          <tr>
+            <td style="padding:2px 8px 2px 0;white-space:nowrap;color:#1769aa">${labelVar(variable1)}</td>
+            <td style="padding:2px 0 2px 8px;text-align:right;font-weight:600">${v1 !== undefined ? v1.toFixed(2) : 'N/A'}</td>
+          </tr>
+          <tr>
+            <td style="padding:2px 8px 2px 0;white-space:nowrap;color:#d35400">${labelVar(variable2)}</td>
+            <td style="padding:2px 0 2px 8px;text-align:right;font-weight:600">${v2 !== undefined ? v2.toFixed(2) : 'N/A'}</td>
+          </tr>
+        </tbody>
+      </table>
+    `
+  }
+
+  const showTooltip = (html, event) => {
+    const el = tooltipRef.current
+    const containerEl = containerRef.current
+    if (!el || !containerEl) return
+    el.innerHTML = html
+    el.style.display = 'block'
+    moveTooltip(event)
+  }
+
+  const moveTooltip = (event) => {
+    const el = tooltipRef.current
+    const containerEl = containerRef.current
+    if (!el || !containerEl) return
+    const rect = containerEl.getBoundingClientRect()
+    const tipRect = el.getBoundingClientRect()
+    const offset = 12
+    let x = event.clientX - rect.left + offset
+    let y = event.clientY - rect.top + offset
+    const maxX = rect.width - tipRect.width - 6
+    const maxY = rect.height - tipRect.height - 6
+    if (x > maxX) x = Math.max(6, maxX)
+    if (y > maxY) y = Math.max(6, maxY)
+    el.style.transform = `translate(${x}px, ${y}px)`
+  }
+
+  const hideTooltip = () => {
+    const el = tooltipRef.current
+    if (el) el.style.display = 'none'
+  }
+
   // Responsive sizing
   useEffect(() => {
     const updateSizes = () => {
@@ -151,9 +223,6 @@ function App() {
     return () => window.removeEventListener('resize', updateSizes)
   }, [])
   
-  const [csvData, setCsvData] = useState([])
-  const [variable1, setVariable1] = useState('Literacy Rate %')
-  const [variable2, setVariable2] = useState('Monthly Salary (2025)')
   
   // Available variables from CSV
   const variables = [
@@ -300,6 +369,11 @@ function App() {
           sel.raise().attr('transform', baseT).style('opacity', 1)
           sel.selectAll('path').attr('stroke-width', 2)
         })
+        // Tooltip
+        showTooltip(buildTooltipHTML(stateName), event)
+      })
+      .on('mousemove', function(event) {
+        moveTooltip(event)
       })
       .on('mouseout', function() {
         d3.select(this).attr('stroke-width', 0.5).attr('stroke', '#333')
@@ -316,12 +390,7 @@ function App() {
               s.selectAll('path').attr('stroke-width', 1.5)
             })
         }
-      })
-      .append('title')
-      .text(d => {
-        const name = displayName(d.properties.name || 'Unknown')
-        const val = valueByState.get(canonicalName(name))
-        return `${name}: ${val !== undefined ? val : 'N/A'} (${labelVar(variable1)})`
+        hideTooltip()
       })
   }, [csvData, variable1, mapSize])
 
@@ -412,6 +481,11 @@ function App() {
           sel.raise().attr('transform', baseT).style('opacity', 1)
           sel.selectAll('path').attr('stroke-width', 2)
         })
+        // Tooltip
+        showTooltip(buildTooltipHTML(stateName), event)
+      })
+      .on('mousemove', function(event) {
+        moveTooltip(event)
       })
       .on('mouseout', function() {
         d3.select(this).attr('stroke-width', 0.5).attr('stroke', '#333')
@@ -424,12 +498,7 @@ function App() {
             s.style('opacity', 0.85)
             s.selectAll('path').attr('stroke-width', 1.5)
           })
-      })
-      .append('title')
-      .text(d => {
-        const name = displayName(d.properties.name || 'Unknown')
-        const val = valueByState.get(canonicalName(name))
-        return `${name}: ${val !== undefined ? val : 'N/A'} (${labelVar(variable2)})`
+        hideTooltip()
       })
   }, [csvData, variable2, mapSize])
 
@@ -510,8 +579,21 @@ function App() {
         .attr('width', x.bandwidth())
         .attr('height', d => chartHeight - y(d.value))
         .attr('fill', '#4292c6')
-        .append('title')
-        .text(d => `${d.state}: ${d.value}`)
+        .on('mouseover', function(event, d) {
+          const stateCanon = canonicalName(d.state)
+          // Build a minimal tooltip for fallback
+          const html = `
+            <div style="font-weight:700;margin-bottom:6px;color:#222">${displayName(stateCanon)}</div>
+            <table style="border-collapse:collapse;font-size:12px;color:#222"><tbody>
+              <tr>
+                <td style="padding:2px 8px 2px 0;white-space:nowrap;color:#d35400">${labelVar(variable2)}</td>
+                <td style="padding:2px 0 2px 8px;text-align:right;font-weight:600">${d.value}</td>
+              </tr>
+            </tbody></table>`
+          showTooltip(html, event)
+        })
+        .on('mousemove', function(event) { moveTooltip(event) })
+        .on('mouseout', function() { hideTooltip() })
 
       gBar.append('g')
         .attr('transform', `translate(0, ${chartHeight})`)
@@ -734,6 +816,11 @@ function App() {
           if (map1Center) drawProjectile(dotCenter, map1Center, '#4292c6', '#4292c6')
           if (map2Center) drawProjectile(dotCenter, map2Center, '#fd8d3c', '#fd8d3c')
         }
+        // Show tooltip for dot
+        showTooltip(buildTooltipHTML(canonicalName(d.state)), event)
+      })
+      .on('mousemove', function(event) {
+        moveTooltip(event)
       })
       .on('mouseout', function(event, d) {
         const sel = d3.select(this)
@@ -749,9 +836,9 @@ function App() {
         if (overlayRef.current) {
           d3.select(overlayRef.current).selectAll('*').remove()
         }
+        hideTooltip()
       })
-      .append('title')
-      .text(d => `${d.state}\n${labelVar(variable1)}: ${d.x.toFixed(2)}\n${labelVar(variable2)}: ${d.y.toFixed(2)}`)
+
 
     // Add grid lines
     g.append('g')
@@ -908,6 +995,25 @@ Through data visualization and analysis, we examined complex relationships betwe
         </div>
         {/* overlay for connection lines */}
         <svg ref={overlayRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
+        {/* fast tooltip */}
+        <div
+          ref={tooltipRef}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            transform: 'translate(-9999px, -9999px)',
+            display: 'none',
+            background: 'rgba(255,255,255,0.98)',
+            border: '1px solid #ccc',
+            borderRadius: 6,
+            boxShadow: '0 6px 18px rgba(0,0,0,0.18)',
+            padding: '8px 10px',
+            pointerEvents: 'none',
+            zIndex: 10,
+            fontFamily: 'Manrope, sans-serif'
+          }}
+        />
       </div>
       <footer style={{ padding: '2rem', textAlign: 'center', fontFamily: 'Manrope, sans-serif', fontSize: '0.75rem', color: '#666', borderTop: '1px solid #ddd', marginTop: '2rem' }}>
         <p style={{ margin: 0, lineHeight: '1.8' }}>
