@@ -494,6 +494,12 @@ function App() {
         const r = this.getBoundingClientRect()
         const stateCenter = { x: r.left - containerRect.left + r.width / 2, y: r.top - containerRect.top + r.height / 2 }
         const stateName = canonicalName(d.properties && d.properties.name)
+        // Reset all dots to default before highlighting related ones
+        d3.select(chartRef.current)
+          .selectAll('.dot')
+          .style('opacity', 0.85)
+          .selectAll('path')
+          .attr('stroke-width', 1.5)
         // ensure overlay dimensions
         d3.select(overlayEl)
           .attr('width', containerEl.clientWidth)
@@ -517,6 +523,8 @@ function App() {
           if (part2) dotInfos.push(part2)
         }
         d3.select(overlayEl).selectAll('*').remove()
+        // Dim all dots a bit to focus attention
+        d3.select(chartRef.current).selectAll('.dot').style('opacity', 0.4)
         dotInfos.forEach(di => {
           drawProjectile(stateCenter, { x: di.x, y: di.y }, '#4292c6', '#4292c6')
           const sel = d3.select(di.el)
@@ -549,18 +557,15 @@ function App() {
         d3.select(this).attr('stroke-width', 0.5).attr('stroke', '#333')
   if (overlayRef.current) d3.select(overlayRef.current).selectAll('*').remove()
         hideBadgeDiv('badge-map2')
-        // reset highlighted dot if any
-        const dotsMap = dotsRef.current
-        if (dotsMap) {
-          d3.select(chartRef.current).selectAll('.dot')
-            .each(function() {
-              const s = d3.select(this)
-              const baseT = s.attr('data-t') || s.attr('transform')
-              s.attr('transform', baseT)
-              s.style('opacity', 0.85)
-              s.selectAll('path').attr('stroke-width', 1.5)
-            })
-        }
+        // reset all dots to default
+        d3.select(chartRef.current).selectAll('.dot')
+          .each(function() {
+            const s = d3.select(this)
+            const baseT = s.attr('data-t') || s.attr('transform')
+            s.attr('transform', baseT)
+            s.style('opacity', 0.85)
+            s.selectAll('path').attr('stroke-width', 1.5)
+          })
         hideTooltip()
       })
   }, [csvData, variable1, mapSize])
@@ -630,6 +635,12 @@ function App() {
         const r = this.getBoundingClientRect()
         const stateCenter = { x: r.left - containerRect.left + r.width / 2, y: r.top - containerRect.top + r.height / 2 }
         const stateName = canonicalName(d.properties && d.properties.name)
+        // Reset all dots to default before highlighting related ones
+        d3.select(chartRef.current)
+          .selectAll('.dot')
+          .style('opacity', 0.85)
+          .selectAll('path')
+          .attr('stroke-width', 1.5)
         const combo = 'dadra and nagar haveli and daman and diu'
         let dotInfos = []
         const direct = dotsMap.get(stateName)
@@ -645,6 +656,8 @@ function App() {
           if (part2) dotInfos.push(part2)
         }
         d3.select(overlayEl).selectAll('*').remove()
+        // Dim all dots a bit to focus attention
+        d3.select(chartRef.current).selectAll('.dot').style('opacity', 0.4)
         dotInfos.forEach(di => {
           drawProjectile(stateCenter, { x: di.x, y: di.y }, '#fd8d3c', '#fd8d3c')
           const sel = d3.select(di.el)
@@ -677,6 +690,7 @@ function App() {
         d3.select(this).attr('stroke-width', 0.5).attr('stroke', '#333')
   if (overlayRef.current) d3.select(overlayRef.current).selectAll('*').remove()
   hideBadgeDiv('badge-map2')
+        // reset all dots to default
         d3.select(chartRef.current).selectAll('.dot')
           .each(function() {
             const s = d3.select(this)
