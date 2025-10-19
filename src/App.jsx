@@ -15,6 +15,8 @@ function App() {
   const mapBox2Ref = useRef(null)
   const chartBoxRef = useRef(null)
   const tooltipRef = useRef(null)
+  const xZoomRef = useRef(d3.zoomIdentity)
+  const yZoomRef = useRef(d3.zoomIdentity)
   const [isMobile, setIsMobile] = useState(false)
   const [mapSize, setMapSize] = useState({ w: 280, h: 380 })
   const [chartSize, setChartSize] = useState({ w: 900, h: 750 })
@@ -1076,13 +1078,42 @@ function App() {
       .style('font-family', 'Manrope, sans-serif')
       .style('font-size', '11px')
 
-    // Zoom behavior for dense data
-    const zoom = d3.zoom()
+    // Add visible zoom hint icons on axes
+    const xHint = xAxisG.append('g')
+      .attr('class', 'zoom-hint-x')
+    xHint.append('text')
+      .attr('x', chartWidth - 6)
+      .attr('y', -10)
+      .attr('text-anchor', 'end')
+      .style('font-family', 'Manrope, sans-serif')
+      .style('font-size', '12px')
+      .style('fill', '#666')
+      .style('cursor', 'ew-resize')
+      .style('user-select', 'none')
+      .text('↔')
+
+    const yHint = yAxisG.append('g')
+      .attr('class', 'zoom-hint-y')
+    yHint.append('text')
+      .attr('x', -10)
+      .attr('y', 12)
+      .attr('text-anchor', 'end')
+      .style('font-family', 'Manrope, sans-serif')
+      .style('font-size', '12px')
+      .style('fill', '#666')
+      .style('cursor', 'ns-resize')
+      .style('user-select', 'none')
+      .text('↕')
+
+    // Zoom behavior
+    const zoomBoth = d3.zoom()
       .scaleExtent([1, 10])
       .translateExtent([[0, 0], [chartWidth, chartHeight]])
       .extent([[0, 0], [chartWidth, chartHeight]])
       .on('zoom', (event) => {
         const t = event.transform
+        xZoomRef.current = t
+        yZoomRef.current = t
         const zx = t.rescaleX(xScale)
         const zy = t.rescaleY(yScale)
         // update dots
@@ -1118,28 +1149,146 @@ function App() {
         }
       })
 
-    // Attach zoom to the whole chart svg to preserve dot hover events
-    chartSvg
-      .call(zoom)
-      .on('dblclick.zoom', null)
-    // Optional: double-click to reset
-    chartSvg.on('dblclick', () => {
-      chartSvg.transition().duration(200).call(zoom.transform, d3.zoomIdentity)
-      // after reset, schedule a recompute of dot positions
-      setTimeout(() => {
+    // X-only zoom (stretch horizontally)
+    const zoomX = d3.zoom()
+      .scaleExtent([1, 10])
+      .translateExtent([[0, 0], [chartWidth, 1]])
+      .extent([[0, 0], [chartWidth, 1]])
+      .on('zoom', (event) => {
+        xZoomRef.current = event.transform
+        const zx = event.transform.rescaleX(xScale)
+        const zy = yZoomRef.current.rescaleY ? yZoomRef.current.rescaleY(yScale) : yScale
+        g.selectAll('.dot').attr('transform', d => `translate(${zx(d.x)}, ${zy(d.y)})`)
+        regLine
+          .attr('x1', zx(lineData[0].x))
+          .attr('y1', zy(lineData[0].y))
+          .attr('x2', zx(lineData[1].x))
+          .attr('y2', zy(lineData[1].y))
+        xAxisG.call(d3.axisBottom(zx))
+        gridX.call(d3.axisBottom(zx).tickSize(-chartHeight).tickFormat(''))
+        // recompute absolute positions
         const containerEl = containerRef.current
         const chartEl = chartRef.current
         if (containerEl && chartEl) {
           const containerRect = containerEl.getBoundingClientRect()
+          const chartRect = chartEl.getBoundingClientRect()
           const tmpMap = new Map()
-          d3.select(chartEl).selectAll('.dot').each(function(d) {
-            const rect = this.getBoundingClientRect()
-            const center = { x: rect.left - containerRect.left + rect.width / 2, y: rect.top - containerRect.top + rect.height / 2 }
-            if (d && d.state) tmpMap.set(canonicalName(d.state), { x: center.x, y: center.y, el: this })
+          g.selectAll('.dot').each(function(d) {
+            if (!d || !d.state) return
+            const cx = chartRect.left - containerRect.left + margin.left + zx(d.x)
+            const cy = chartRect.top - containerRect.top + margin.top + zy(d.y)
+            tmpMap.set(canonicalName(d.state), { x: cx, y: cy, el: this })
           })
           dotsRef.current = tmpMap
         }
-      }, 220)
+      })
+
+    // Y-only zoom (stretch vertically)
+    const zoomY = d3.zoom()
+      .scaleExtent([1, 10])
+      .translateExtent([[0, 0], [1, chartHeight]])
+      .extent([[0, 0], [1, chartHeight]])
+      .on('zoom', (event) => {
+        yZoomRef.current = event.transform
+        const zy = event.transform.rescaleY(yScale)
+        const zx = xZoomRef.current.rescaleX ? xZoomRef.current.rescaleX(xScale) : xScale
+        g.selectAll('.dot').attr('transform', d => `translate(${zx(d.x)}, ${zy(d.y)})`)
+        regLine
+          .attr('x1', zx(lineData[0].x))
+          .attr('y1', zy(lineData[0].y))
+          .attr('x2', zx(lineData[1].x))
+          .attr('y2', zy(lineData[1].y))
+        yAxisG.call(d3.axisLeft(zy))
+        gridY.call(d3.axisLeft(zy).tickSize(-chartWidth).tickFormat(''))
+        // recompute absolute positions
+        const containerEl = containerRef.current
+        const chartEl = chartRef.current
+        if (containerEl && chartEl) {
+          const containerRect = containerEl.getBoundingClientRect()
+          const chartRect = chartEl.getBoundingClientRect()
+          const tmpMap = new Map()
+          g.selectAll('.dot').each(function(d) {
+            if (!d || !d.state) return
+            const cx = chartRect.left - containerRect.left + margin.left + zx(d.x)
+            const cy = chartRect.top - containerRect.top + margin.top + zy(d.y)
+            tmpMap.set(canonicalName(d.state), { x: cx, y: cy, el: this })
+          })
+          dotsRef.current = tmpMap
+        }
+      })
+
+  // Attach zooms (axis-only)
+  chartSvg.on('.zoom', null)
+    // X-only: attach to x-axis area
+    xAxisG.call(zoomX).on('.zoom', null)
+    xAxisG.append('rect')
+      .attr('x', 0)
+      .attr('y', 0)
+      .attr('width', chartWidth)
+      .attr('height', 24)
+      .style('fill', 'transparent')
+      .style('cursor', 'ew-resize')
+      .call(zoomX)
+    // small hit near icon
+    xHint.append('rect')
+      .attr('x', chartWidth - 28)
+      .attr('y', -22)
+      .attr('width', 24)
+      .attr('height', 20)
+      .style('fill', 'transparent')
+      .style('cursor', 'ew-resize')
+      .call(zoomX)
+    // Y-only: attach to y-axis area
+    yAxisG.call(zoomY).on('.zoom', null)
+    yAxisG.append('rect')
+      .attr('x', -24)
+      .attr('y', 0)
+      .attr('width', 24)
+      .attr('height', chartHeight)
+      .style('fill', 'transparent')
+      .style('cursor', 'ns-resize')
+      .call(zoomY)
+    // small hit near icon
+    yHint.append('rect')
+      .attr('x', -28)
+      .attr('y', -4)
+      .attr('width', 24)
+      .attr('height', 20)
+      .style('fill', 'transparent')
+      .style('cursor', 'ns-resize')
+      .call(zoomY)
+    // Optional: double-click to reset
+    chartSvg.on('dblclick', () => {
+      // Reset axis-only zooms to identity
+      xZoomRef.current = d3.zoomIdentity
+      yZoomRef.current = d3.zoomIdentity
+      const zx = xScale
+      const zy = yScale
+      g.selectAll('.dot').attr('transform', d => `translate(${zx(d.x)}, ${zy(d.y)})`)
+      regLine
+        .attr('x1', zx(lineData[0].x))
+        .attr('y1', zy(lineData[0].y))
+        .attr('x2', zx(lineData[1].x))
+        .attr('y2', zy(lineData[1].y))
+      xAxisG.call(d3.axisBottom(zx))
+      yAxisG.call(d3.axisLeft(zy))
+      gridX.call(d3.axisBottom(zx).tickSize(-chartHeight).tickFormat(''))
+      gridY.call(d3.axisLeft(zy).tickSize(-chartWidth).tickFormat(''))
+      // recompute absolute positions
+      const containerEl = containerRef.current
+      const chartEl = chartRef.current
+      if (containerEl && chartEl) {
+        const containerRect = containerEl.getBoundingClientRect()
+        const chartRect = chartEl.getBoundingClientRect()
+        const tmpMap = new Map()
+        g.selectAll('.dot').each(function(d) {
+          if (!d || !d.state) return
+          const cx = chartRect.left - containerRect.left + margin.left + zx(d.x)
+          const cy = chartRect.top - containerRect.top + margin.top + zy(d.y)
+          tmpMap.set(canonicalName(d.state), { x: cx, y: cy, el: this })
+        })
+        dotsRef.current = tmpMap
+      }
     })
 
     // Add chart title
