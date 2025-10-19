@@ -38,6 +38,11 @@ function App() {
       ['pondicherry', 'puducherry'],
       ['orissa', 'odisha'],
       ['arunanchal pradesh', 'arunachal pradesh'],
+      ['nct of delhi', 'delhi'],
+      ['national capital territory of delhi', 'delhi'],
+      ['the national capital territory of delhi', 'delhi'],
+      ['delhi nct', 'delhi'],
+      ['new delhi', 'delhi'],
     ])
     return aliases.get(n) || n
   }
@@ -239,7 +244,10 @@ function App() {
         d3.select(overlayEl).selectAll('*').remove()
         if (dotInfo) {
           drawProjectile(stateCenter, { x: dotInfo.x, y: dotInfo.y }, '#4292c6', '#4292c6')
-          d3.select(dotInfo.el).attr('r', 10).attr('fill', '#08519c').attr('opacity', 1)
+          const sel = d3.select(dotInfo.el)
+          const baseT = sel.attr('data-t') || sel.attr('transform')
+          sel.raise().attr('transform', `${baseT} scale(1.6)`).style('opacity', 1)
+          sel.selectAll('path').attr('stroke-width', 2)
         }
       })
       .on('mouseout', function() {
@@ -248,11 +256,14 @@ function App() {
         // reset highlighted dot if any
         const dotsMap = dotsRef.current
         if (dotsMap) {
-          // This is a blunt reset of all dots to default visual
           d3.select(chartRef.current).selectAll('.dot')
-            .attr('r', 6)
-            .attr('fill', '#4292c6')
-            .attr('opacity', 0.7)
+            .each(function() {
+              const s = d3.select(this)
+              const baseT = s.attr('data-t') || s.attr('transform')
+              s.attr('transform', baseT)
+              s.style('opacity', 0.85)
+              s.selectAll('path').attr('stroke-width', 1.5)
+            })
         }
       })
       .append('title')
@@ -332,16 +343,23 @@ function App() {
         d3.select(overlayEl).selectAll('*').remove()
         if (dotInfo) {
           drawProjectile(stateCenter, { x: dotInfo.x, y: dotInfo.y }, '#fd8d3c', '#fd8d3c')
-          d3.select(dotInfo.el).attr('r', 10).attr('fill', '#08519c').attr('opacity', 1)
+          const sel = d3.select(dotInfo.el)
+          const baseT = sel.attr('data-t') || sel.attr('transform')
+          sel.raise().attr('transform', `${baseT} scale(1.6)`).style('opacity', 1)
+          sel.selectAll('path').attr('stroke-width', 2)
         }
       })
       .on('mouseout', function() {
         d3.select(this).attr('stroke-width', 0.5).attr('stroke', '#333')
         if (overlayRef.current) d3.select(overlayRef.current).selectAll('*').remove()
         d3.select(chartRef.current).selectAll('.dot')
-          .attr('r', 6)
-          .attr('fill', '#4292c6')
-          .attr('opacity', 0.7)
+          .each(function() {
+            const s = d3.select(this)
+            const baseT = s.attr('data-t') || s.attr('transform')
+            s.attr('transform', baseT)
+            s.style('opacity', 0.85)
+            s.selectAll('path').attr('stroke-width', 1.5)
+          })
       })
       .append('title')
       .text(d => {
@@ -518,36 +536,63 @@ function App() {
       .attr('stroke-width', 2)
       .attr('stroke-dasharray', '5,5')
 
-    // Add scatter points
-    g.selectAll('.dot')
+    // Color scales for point halves (match map palettes)
+    const blueRange = ['#f7fbff', '#deebf7', '#c6dbef', '#9ecae1', '#6baed6', '#4292c6', '#2171b5', '#08519c', '#08306b']
+    const orangeRange = ['#fff5eb', '#fee6ce', '#fdd0a2', '#fdae6b', '#fd8d3c', '#f16913', '#d94801', '#a63603', '#7f2704']
+    const xMin = d3.min(scatterData, d => d.x)
+    const xMax = d3.max(scatterData, d => d.x)
+    const yMin = d3.min(scatterData, d => d.y)
+    const yMax = d3.max(scatterData, d => d.y)
+    const blueScale = d3.scaleQuantize().domain([xMin, xMax]).range(blueRange)
+    const orangeScale = d3.scaleQuantize().domain([yMin, yMax]).range(orangeRange)
+
+    // Draw each dot as a group with two semicircle arcs (left=var2 orange, right=var1 blue)
+    const r = 6
+    const arcGen = d3.arc().innerRadius(0).outerRadius(r)
+    const dots = g.selectAll('.dot')
       .data(scatterData)
       .enter()
-      .append('circle')
+      .append('g')
       .attr('class', 'dot')
-      .attr('cx', d => xScale(d.x))
-      .attr('cy', d => yScale(d.y))
-      .attr('r', 6)
-      .attr('fill', '#4292c6')
-      .attr('opacity', 0.7)
+      .attr('transform', d => `translate(${xScale(d.x)}, ${yScale(d.y)})`)
+      .style('opacity', 0.85)
+      .style('cursor', 'pointer')
+
+    // Right half (variable1, blue)
+    dots.append('path')
+      .attr('class', 'half half-blue')
+      .attr('d', arcGen.startAngle(-Math.PI / 2).endAngle(Math.PI / 2))
+      .attr('fill', d => blueScale(d.x))
       .attr('stroke', '#2171b5')
       .attr('stroke-width', 1.5)
-      .each(function(d) {
-        // store absolute position for reverse hover
-        const containerEl = containerRef.current
-        if (!containerEl) return
-        const containerRect = containerEl.getBoundingClientRect()
-        const dotRect = this.getBoundingClientRect()
-        const center = {
-          x: dotRect.left - containerRect.left + dotRect.width / 2,
-          y: dotRect.top - containerRect.top + dotRect.height / 2,
-        }
-  dotsRef.current.set(canonicalName(d.state), { x: center.x, y: center.y, el: this })
-      })
-      .on('mouseover', function(event, d) {
-        d3.select(this)
-          .attr('r', 10)
-          .attr('fill', '#08519c')
-          .attr('opacity', 1)
+
+    // Left half (variable2, orange)
+    dots.append('path')
+      .attr('class', 'half half-orange')
+      .attr('d', arcGen.startAngle(Math.PI / 2).endAngle(3 * Math.PI / 2))
+      .attr('fill', d => orangeScale(d.y))
+      .attr('stroke', '#a63603')
+      .attr('stroke-width', 1.5)
+
+    // Store absolute position for reverse hover
+    dots.each(function(d) {
+      const containerEl = containerRef.current
+      if (!containerEl) return
+      const containerRect = containerEl.getBoundingClientRect()
+      const dotRect = this.getBoundingClientRect()
+      const center = {
+        x: dotRect.left - containerRect.left + dotRect.width / 2,
+        y: dotRect.top - containerRect.top + dotRect.height / 2,
+      }
+      dotsRef.current.set(canonicalName(d.state), { x: center.x, y: center.y, el: this })
+    })
+
+    dots.on('mouseover', function(event, d) {
+        const sel = d3.select(this)
+        sel.raise()
+        sel.attr('transform', `translate(${xScale(d.x)}, ${yScale(d.y)}) scale(1.6)`)
+        sel.style('opacity', 1)
+        sel.selectAll('path').attr('stroke-width', 2)
         
         // Highlight corresponding state on both maps and draw connection lines
         const containerEl = containerRef.current
@@ -625,10 +670,10 @@ function App() {
         }
       })
       .on('mouseout', function(event, d) {
-        d3.select(this)
-          .attr('r', 6)
-          .attr('fill', '#4292c6')
-          .attr('opacity', 0.7)
+        const sel = d3.select(this)
+        sel.attr('transform', `translate(${xScale(d.x)}, ${yScale(d.y)}) scale(1)`)
+        sel.style('opacity', 0.85)
+        sel.selectAll('path').attr('stroke-width', 1.5)
         
         // Reset map highlighting
         d3.selectAll('path')
@@ -639,8 +684,8 @@ function App() {
           d3.select(overlayRef.current).selectAll('*').remove()
         }
       })
-  .append('title')
-  .text(d => `${d.state}\n${labelVar(variable1)}: ${d.x.toFixed(2)}\n${labelVar(variable2)}: ${d.y.toFixed(2)}`)
+      .append('title')
+      .text(d => `${d.state}\n${labelVar(variable1)}: ${d.x.toFixed(2)}\n${labelVar(variable2)}: ${d.y.toFixed(2)}`)
 
     // Add grid lines
     g.append('g')
