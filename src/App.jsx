@@ -1100,6 +1100,22 @@ function App() {
         // update grids
         gridY.call(d3.axisLeft(zy).tickSize(-chartWidth).tickFormat(''))
         gridX.call(d3.axisBottom(zx).tickSize(-chartHeight).tickFormat(''))
+
+        // Recompute absolute positions for reverse hover (map -> chart)
+        const containerEl = containerRef.current
+        const chartEl = chartRef.current
+        if (containerEl && chartEl) {
+          const containerRect = containerEl.getBoundingClientRect()
+          const chartRect = chartEl.getBoundingClientRect()
+          const tmpMap = new Map()
+          g.selectAll('.dot').each(function(d) {
+            if (!d || !d.state) return
+            const cx = chartRect.left - containerRect.left + margin.left + zx(d.x)
+            const cy = chartRect.top - containerRect.top + margin.top + zy(d.y)
+            tmpMap.set(canonicalName(d.state), { x: cx, y: cy, el: this })
+          })
+          dotsRef.current = tmpMap
+        }
       })
 
     // Attach zoom to the whole chart svg to preserve dot hover events
@@ -1109,6 +1125,21 @@ function App() {
     // Optional: double-click to reset
     chartSvg.on('dblclick', () => {
       chartSvg.transition().duration(200).call(zoom.transform, d3.zoomIdentity)
+      // after reset, schedule a recompute of dot positions
+      setTimeout(() => {
+        const containerEl = containerRef.current
+        const chartEl = chartRef.current
+        if (containerEl && chartEl) {
+          const containerRect = containerEl.getBoundingClientRect()
+          const tmpMap = new Map()
+          d3.select(chartEl).selectAll('.dot').each(function(d) {
+            const rect = this.getBoundingClientRect()
+            const center = { x: rect.left - containerRect.left + rect.width / 2, y: rect.top - containerRect.top + rect.height / 2 }
+            if (d && d.state) tmpMap.set(canonicalName(d.state), { x: center.x, y: center.y, el: this })
+          })
+          dotsRef.current = tmpMap
+        }
+      }, 220)
     })
 
     // Add chart title
