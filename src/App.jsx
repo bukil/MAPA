@@ -297,7 +297,7 @@ function App() {
           drawProjectile(stateCenter, { x: di.x, y: di.y }, '#4292c6', '#4292c6')
           const sel = d3.select(di.el)
           const baseT = sel.attr('data-t') || sel.attr('transform')
-          sel.raise().attr('transform', `${baseT} scale(1.6)`).style('opacity', 1)
+          sel.raise().attr('transform', baseT).style('opacity', 1)
           sel.selectAll('path').attr('stroke-width', 2)
         })
       })
@@ -409,7 +409,7 @@ function App() {
           drawProjectile(stateCenter, { x: di.x, y: di.y }, '#fd8d3c', '#fd8d3c')
           const sel = d3.select(di.el)
           const baseT = sel.attr('data-t') || sel.attr('transform')
-          sel.raise().attr('transform', `${baseT} scale(1.6)`).style('opacity', 1)
+          sel.raise().attr('transform', baseT).style('opacity', 1)
           sel.selectAll('path').attr('stroke-width', 2)
         })
       })
@@ -651,12 +651,12 @@ function App() {
       dotsRef.current.set(canonicalName(d.state), { x: center.x, y: center.y, el: this })
     })
 
-    dots.on('mouseover', function(event, d) {
-        const sel = d3.select(this)
-        sel.raise()
-        sel.attr('transform', `translate(${xScale(d.x)}, ${yScale(d.y)}) scale(1.6)`)
-        sel.style('opacity', 1)
-        sel.selectAll('path').attr('stroke-width', 2)
+  dots.on('mouseover', function(event, d) {
+    const sel = d3.select(this)
+    sel.raise()
+    // Remove size scaling; just emphasize with opacity and stroke
+    sel.style('opacity', 1)
+    sel.selectAll('path').attr('stroke-width', 2)
         
         // Highlight corresponding state on both maps and draw connection lines
         const containerEl = containerRef.current
@@ -737,7 +737,7 @@ function App() {
       })
       .on('mouseout', function(event, d) {
         const sel = d3.select(this)
-        sel.attr('transform', `translate(${xScale(d.x)}, ${yScale(d.y)}) scale(1)`)
+        // No transform reset needed as we don't scale
         sel.style('opacity', 0.85)
         sel.selectAll('path').attr('stroke-width', 1.5)
         
