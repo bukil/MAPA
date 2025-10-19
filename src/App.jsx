@@ -26,6 +26,22 @@ function App() {
     .replace(/\s+/g, ' ')
     .trim()
 
+  // Canonicalize known variations/misspellings across CSV vs map
+  const canonicalName = (s) => {
+    const n = normalizeName(s)
+    const aliases = new Map([
+      ['andaman and nicobar island', 'andaman and nicobar islands'],
+      ['andaman nicobar island', 'andaman and nicobar islands'],
+      ['andaman nicobar islands', 'andaman and nicobar islands'],
+      ['dadara and nagar havelli', 'dadra and nagar haveli'],
+      ['dadra and nagar havelli', 'dadra and nagar haveli'],
+      ['pondicherry', 'puducherry'],
+      ['orissa', 'odisha'],
+      ['arunanchal pradesh', 'arunachal pradesh'],
+    ])
+    return aliases.get(n) || n
+  }
+
   // UI label: remove year markers like (2025) or 2025
   const labelVar = (s) => String(s || '')
     .replace(/\(?\b2025\b\)?/g, '')
@@ -178,7 +194,7 @@ function App() {
     // Build value map from CSV for variable1
     const valueByState = new Map()
     csvData.forEach(row => {
-      const key = normalizeName(row['State/UT'])
+      const key = canonicalName(row['State/UT'])
       if (!key) return
       const v = String(row[variable1] ?? '')
         .replace(/,/g, '')
@@ -203,7 +219,7 @@ function App() {
       .append('path')
       .attr('d', path)
       .attr('fill', d => {
-        const name = normalizeName(d.properties && d.properties.name)
+        const name = canonicalName(d.properties && d.properties.name)
         const val = valueByState.get(name)
         return typeof val === 'number' ? colorScale(val) : '#eee'
       })
@@ -218,7 +234,7 @@ function App() {
         const containerRect = containerEl.getBoundingClientRect()
         const r = this.getBoundingClientRect()
         const stateCenter = { x: r.left - containerRect.left + r.width / 2, y: r.top - containerRect.top + r.height / 2 }
-        const stateName = normalizeName(d.properties && d.properties.name)
+  const stateName = canonicalName(d.properties && d.properties.name)
         const dotInfo = dotsMap.get(stateName)
         d3.select(overlayEl).selectAll('*').remove()
         if (dotInfo) {
@@ -242,7 +258,7 @@ function App() {
       .append('title')
       .text(d => {
         const name = d.properties.name || 'Unknown'
-        const val = valueByState.get(normalizeName(name))
+        const val = valueByState.get(canonicalName(name))
         return `${name}: ${val !== undefined ? val : 'N/A'} (${labelVar(variable1)})`
       })
   }, [csvData, variable1, mapSize])
@@ -271,7 +287,7 @@ function App() {
     // Build value map from CSV for variable2
     const valueByState = new Map()
     csvData.forEach(row => {
-      const key = normalizeName(row['State/UT'])
+      const key = canonicalName(row['State/UT'])
       if (!key) return
       const v = String(row[variable2] ?? '')
         .replace(/,/g, '')
@@ -296,7 +312,7 @@ function App() {
       .append('path')
       .attr('d', path)
       .attr('fill', d => {
-        const name = normalizeName(d.properties && d.properties.name)
+        const name = canonicalName(d.properties && d.properties.name)
         const val = valueByState.get(name)
         return typeof val === 'number' ? colorScale(val) : '#eee'
       })
@@ -311,7 +327,7 @@ function App() {
         const containerRect = containerEl.getBoundingClientRect()
         const r = this.getBoundingClientRect()
         const stateCenter = { x: r.left - containerRect.left + r.width / 2, y: r.top - containerRect.top + r.height / 2 }
-        const stateName = normalizeName(d.properties && d.properties.name)
+  const stateName = canonicalName(d.properties && d.properties.name)
         const dotInfo = dotsMap.get(stateName)
         d3.select(overlayEl).selectAll('*').remove()
         if (dotInfo) {
@@ -330,7 +346,7 @@ function App() {
       .append('title')
       .text(d => {
         const name = d.properties.name || 'Unknown'
-        const val = valueByState.get(normalizeName(name))
+        const val = valueByState.get(canonicalName(name))
         return `${name}: ${val !== undefined ? val : 'N/A'} (${labelVar(variable2)})`
       })
   }, [csvData, variable2, mapSize])
@@ -525,7 +541,7 @@ function App() {
           x: dotRect.left - containerRect.left + dotRect.width / 2,
           y: dotRect.top - containerRect.top + dotRect.height / 2,
         }
-        dotsRef.current.set(normalizeName(d.state), { x: center.x, y: center.y, el: this })
+  dotsRef.current.set(canonicalName(d.state), { x: center.x, y: center.y, el: this })
       })
       .on('mouseover', function(event, d) {
         d3.select(this)
@@ -552,7 +568,7 @@ function App() {
           let map1Center = null
           d3.select(svgRef.current).selectAll('path').each(function(md) {
             const name = md && md.properties && md.properties.name
-            if (name && normalizeName(name) === normalizeName(d.state)) {
+            if (name && canonicalName(name) === canonicalName(d.state)) {
               const r = this.getBoundingClientRect()
               map1Center = { x: r.left - containerRect.left + r.width / 2, y: r.top - containerRect.top + r.height / 2 }
               d3.select(this).attr('stroke', '#ff0000').attr('stroke-width', 3)
@@ -561,7 +577,7 @@ function App() {
           let map2Center = null
           d3.select(svgRef2.current).selectAll('path').each(function(md) {
             const name = md && md.properties && md.properties.name
-            if (name && normalizeName(name) === normalizeName(d.state)) {
+            if (name && canonicalName(name) === canonicalName(d.state)) {
               const r = this.getBoundingClientRect()
               map2Center = { x: r.left - containerRect.left + r.width / 2, y: r.top - containerRect.top + r.height / 2 }
               d3.select(this).attr('stroke', '#ff0000').attr('stroke-width', 3)
@@ -711,7 +727,7 @@ function App() {
     d3.select(chartEl).selectAll('.dot').each(function(d) {
       const rect = this.getBoundingClientRect()
       const center = { x: rect.left - containerRect.left + rect.width / 2, y: rect.top - containerRect.top + rect.height / 2 }
-      if (d && d.state) tmpMap.set(normalizeName(d.state), { x: center.x, y: center.y, el: this })
+      if (d && d.state) tmpMap.set(canonicalName(d.state), { x: center.x, y: center.y, el: this })
     })
     dotsRef.current = tmpMap
   }, [chartSize, csvData, variable1, variable2])
