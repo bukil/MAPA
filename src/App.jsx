@@ -11,6 +11,12 @@ function App() {
   const containerRef = useRef(null)
   const overlayRef = useRef(null)
   const dotsRef = useRef(new Map())
+  const mapBox1Ref = useRef(null)
+  const mapBox2Ref = useRef(null)
+  const chartBoxRef = useRef(null)
+  const [isMobile, setIsMobile] = useState(false)
+  const [mapSize, setMapSize] = useState({ w: 280, h: 380 })
+  const [chartSize, setChartSize] = useState({ w: 900, h: 750 })
 
   // Helpers shared across effects
   const normalizeName = (s) => String(s || '')
@@ -62,6 +68,29 @@ function App() {
         projectile.attr('cx', p.x).attr('cy', p.y)
       })
   }
+
+  // Responsive sizing
+  useEffect(() => {
+    const updateSizes = () => {
+      const mobile = window.innerWidth < 900
+      setIsMobile(mobile)
+      const mapEl = mapBox1Ref.current
+      if (mapEl) {
+        const w = Math.max(220, mapEl.clientWidth - 16)
+        const h = mobile ? Math.max(220, Math.round(w * 0.9)) : Math.max(320, Math.round(w * 1.3))
+        setMapSize({ w, h })
+      }
+      const chartEl = chartBoxRef.current
+      if (chartEl) {
+        const wC = Math.max(280, chartEl.clientWidth - 16)
+        const hC = mobile ? Math.max(380, Math.round(wC * 0.8)) : 750
+        setChartSize({ w: wC, h: hC })
+      }
+    }
+    updateSizes()
+    window.addEventListener('resize', updateSizes)
+    return () => window.removeEventListener('resize', updateSizes)
+  }, [])
   
   const [csvData, setCsvData] = useState([])
   const [variable1, setVariable1] = useState('Literacy Rate %')
@@ -129,8 +158,8 @@ function App() {
   useEffect(() => {
     const svg = d3.select(svgRef.current)
     svg.selectAll('*').remove()
-    const width = 280
-    const height = 380
+    const width = mapSize.w
+    const height = mapSize.h
     const padding = 10
 
     svg.attr('width', width).attr('height', height)
@@ -216,14 +245,14 @@ function App() {
         const val = valueByState.get(normalizeName(name))
         return `${name}: ${val !== undefined ? val : 'N/A'} (${labelVar(variable1)})`
       })
-  }, [csvData, variable1])
+  }, [csvData, variable1, mapSize])
 
   // Second map: colored by variable2
   useEffect(() => {
     const svg = d3.select(svgRef2.current)
     svg.selectAll('*').remove()
-    const width = 280
-    const height = 380
+    const width = mapSize.w
+    const height = mapSize.h
     const padding = 10
 
     svg.attr('width', width).attr('height', height)
@@ -304,7 +333,7 @@ function App() {
         const val = valueByState.get(normalizeName(name))
         return `${name}: ${val !== undefined ? val : 'N/A'} (${labelVar(variable2)})`
       })
-  }, [csvData, variable2])
+  }, [csvData, variable2, mapSize])
 
   // Scatter plot with correlation
   useEffect(() => {
@@ -320,8 +349,8 @@ function App() {
     const chartSvg = d3.select(chartRef.current)
     chartSvg.selectAll('*').remove()
     
-    const width = 900
-    const height = 750
+  const width = chartSize.w
+  const height = chartSize.h
     const margin = { top: 60, right: 40, bottom: 80, left: 80 }
     const chartWidth = width - margin.left - margin.right
     const chartHeight = height - margin.top - margin.bottom
@@ -472,14 +501,6 @@ function App() {
       .attr('stroke', '#e63946')
       .attr('stroke-width', 2)
       .attr('stroke-dasharray', '5,5')
-
-    // Helper: normalize state names for matching
-    const normalizeName = (s) => String(s || '')
-      .toLowerCase()
-      .replace(/&/g, 'and')
-      .replace(/\./g, '')
-      .replace(/\s+/g, ' ')
-      .trim()
 
     // Add scatter points
     g.selectAll('.dot')
@@ -678,14 +699,29 @@ function App() {
       .style('font-size', '13px')
       .style('font-weight', '600')
   .text(labelVar(variable2))
-  }, [csvData, variable1, variable2])
+  }, [csvData, variable1, variable2, chartSize])
+
+  // Recompute dot absolute positions on resize or chart redraw
+  useEffect(() => {
+    const containerEl = containerRef.current
+    const chartEl = chartRef.current
+    if (!containerEl || !chartEl) return
+    const containerRect = containerEl.getBoundingClientRect()
+    const tmpMap = new Map()
+    d3.select(chartEl).selectAll('.dot').each(function(d) {
+      const rect = this.getBoundingClientRect()
+      const center = { x: rect.left - containerRect.left + rect.width / 2, y: rect.top - containerRect.top + rect.height / 2 }
+      if (d && d.state) tmpMap.set(normalizeName(d.state), { x: center.x, y: center.y, el: this })
+    })
+    dotsRef.current = tmpMap
+  }, [chartSize, csvData, variable1, variable2])
 
   return (
     <main style={{ minHeight: '100vh', background: '#fff', margin: 0 }}>
       <h1 style={{ fontSize: '3rem', fontWeight: 'bold', color: '#222', textAlign: 'left', marginTop: '2rem', marginBottom: '2rem', marginLeft: '2rem', fontFamily: 'Anton, sans-serif' }}>
         Exploring the Links Between Literacy, Salary & Societal Issues in India
       </h1>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', padding: '2rem' }}>
+  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '1rem', padding: isMobile ? '1rem' : '2rem' }}>
         <div style={{ fontFamily: 'Manrope, sans-serif', fontSize: '1rem', color: '#555', lineHeight: '1.6' }}>
           <p>This project explores how literacy rates and income levels relate to various societal issues and crimes in India.
 We wanted to look beyond numbers — to see if education and wealth actually make a society more equal, just, and emotionally stable, or if they also create new challenges.
@@ -696,8 +732,8 @@ Through data visualization and analysis, we examined complex relationships betwe
       </div>
       
       {/* Variable Selection Controls */}
-      <div style={{ margin: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '8px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+      <div style={{ margin: isMobile ? '1rem' : '2rem', padding: isMobile ? '1rem' : '1.5rem', background: '#f8f9fa', borderRadius: '8px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '1rem' : '2rem' }}>
           <div>
             <label style={{ fontFamily: 'Manrope, sans-serif', fontSize: '0.9rem', fontWeight: '600', color: '#333', display: 'block', marginBottom: '0.5rem' }}>
               Map 1 Variable (Blue):
@@ -729,19 +765,19 @@ Through data visualization and analysis, we examined complex relationships betwe
         </div>
       </div>
 
-  <div ref={containerRef} style={{ position: 'relative', margin: '2rem', border: '2px solid #ddd', borderRadius: '0px', display: 'grid', gridTemplateColumns: '0.6fr 2.4fr', gap: 0 }}>
-        <div style={{ borderRight: '2px solid #ddd', display: 'flex', flexDirection: 'column', gap: 0 }}>
-          <div style={{ borderBottom: '2px solid #ddd', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1rem', overflow: 'hidden', height: '400px' }}>
+  <div ref={containerRef} style={{ position: 'relative', margin: isMobile ? '1rem' : '2rem', border: '2px solid #ddd', borderRadius: '0px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '0.6fr 2.4fr', gap: 0 }}>
+        <div style={{ borderRight: isMobile ? 'none' : '2px solid #ddd', display: 'flex', flexDirection: 'column', gap: 0 }}>
+          <div ref={mapBox1Ref} style={{ borderBottom: '2px solid #ddd', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: isMobile ? '0.75rem' : '1rem', overflow: 'hidden', height: mapSize.h + 20 }}>
             <h3 style={{ fontFamily: 'Manrope, sans-serif', fontSize: '0.85rem', fontWeight: '600', color: '#4292c6', margin: '0 0 0.5rem 0', textAlign: 'center' }}>{labelVar(variable1)}</h3>
             <svg ref={svgRef}></svg>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1rem', overflow: 'hidden', height: '400px' }}>
+          <div ref={mapBox2Ref} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: isMobile ? '0.75rem' : '1rem', overflow: 'hidden', height: mapSize.h + 20 }}>
             <h3 style={{ fontFamily: 'Manrope, sans-serif', fontSize: '0.85rem', fontWeight: '600', color: '#fd8d3c', margin: '0 0 0.5rem 0', textAlign: 'center' }}>{labelVar(variable2)}</h3>
             <svg ref={svgRef2}></svg>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', overflowX: 'auto', height: '800px' }}>
-          <svg ref={chartRef}></svg>
+        <div ref={chartBoxRef} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? '0.75rem' : '1rem', overflowX: 'auto', height: chartSize.h + 50 }}>
+          <svg ref={chartRef} style={{ maxWidth: '100%' }}></svg>
         </div>
         {/* overlay for connection lines */}
         <svg ref={overlayRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
