@@ -20,6 +20,12 @@ function App() {
     .replace(/\s+/g, ' ')
     .trim()
 
+  // UI label: remove year markers like (2025) or 2025
+  const labelVar = (s) => String(s || '')
+    .replace(/\(?\b2025\b\)?/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+
   const drawProjectile = (from, to, stroke, dotFill) => {
     const overlayEl = overlayRef.current
     const containerEl = containerRef.current
@@ -119,7 +125,7 @@ function App() {
     loadCsv()
   }, [])
 
-  // First map
+  // First map: colored by variable1
   useEffect(() => {
     const svg = d3.select(svgRef.current)
     svg.selectAll('*').remove()
@@ -140,9 +146,26 @@ function App() {
     const g = svg.append('g')
       .attr('transform', `translate(${padding}, ${padding})`)
 
-    // Color scale for choropleth
+    // Build value map from CSV for variable1
+    const valueByState = new Map()
+    csvData.forEach(row => {
+      const key = normalizeName(row['State/UT'])
+      if (!key) return
+      const v = String(row[variable1] ?? '')
+        .replace(/,/g, '')
+        .replace(/\*/g, '')
+        .replace(/%/g, '')
+        .trim()
+      const num = parseFloat(v)
+      if (!isNaN(num)) valueByState.set(key, num)
+    })
+    const values = Array.from(valueByState.values())
+    const vmin = values.length ? d3.min(values) : 0
+    const vmax = values.length ? d3.max(values) : 1
+    const domain = vmin === vmax ? [vmin, vmax + 1] : [vmin, vmax]
+    // Color scale for choropleth (Blues)
     const colorScale = d3.scaleQuantize()
-      .domain([0, 100])
+      .domain(domain)
       .range(['#f7fbff', '#deebf7', '#c6dbef', '#9ecae1', '#6baed6', '#4292c6', '#2171b5', '#08519c', '#08306b'])
 
     g.selectAll('path')
@@ -150,7 +173,11 @@ function App() {
       .enter()
       .append('path')
       .attr('d', path)
-      .attr('fill', d => colorScale(Math.random() * 100)) // Random data for now
+      .attr('fill', d => {
+        const name = normalizeName(d.properties && d.properties.name)
+        const val = valueByState.get(name)
+        return typeof val === 'number' ? colorScale(val) : '#eee'
+      })
       .attr('stroke', '#333')
       .attr('stroke-width', 0.5)
       .on('mouseover', function(event, d) {
@@ -184,10 +211,14 @@ function App() {
         }
       })
       .append('title')
-      .text(d => d.properties.name || 'Unknown')
-  }, [])
+      .text(d => {
+        const name = d.properties.name || 'Unknown'
+        const val = valueByState.get(normalizeName(name))
+        return `${name}: ${val !== undefined ? val : 'N/A'} (${labelVar(variable1)})`
+      })
+  }, [csvData, variable1])
 
-  // Second map
+  // Second map: colored by variable2
   useEffect(() => {
     const svg = d3.select(svgRef2.current)
     svg.selectAll('*').remove()
@@ -208,9 +239,26 @@ function App() {
     const g = svg.append('g')
       .attr('transform', `translate(${padding}, ${padding})`)
 
-    // Different color scale for second variable
+    // Build value map from CSV for variable2
+    const valueByState = new Map()
+    csvData.forEach(row => {
+      const key = normalizeName(row['State/UT'])
+      if (!key) return
+      const v = String(row[variable2] ?? '')
+        .replace(/,/g, '')
+        .replace(/\*/g, '')
+        .replace(/%/g, '')
+        .trim()
+      const num = parseFloat(v)
+      if (!isNaN(num)) valueByState.set(key, num)
+    })
+    const values = Array.from(valueByState.values())
+    const vmin = values.length ? d3.min(values) : 0
+    const vmax = values.length ? d3.max(values) : 1
+    const domain = vmin === vmax ? [vmin, vmax + 1] : [vmin, vmax]
+    // Different color scale for second variable (Oranges)
     const colorScale = d3.scaleQuantize()
-      .domain([0, 100])
+      .domain(domain)
       .range(['#fff5eb', '#fee6ce', '#fdd0a2', '#fdae6b', '#fd8d3c', '#f16913', '#d94801', '#a63603', '#7f2704'])
 
     g.selectAll('path')
@@ -218,7 +266,11 @@ function App() {
       .enter()
       .append('path')
       .attr('d', path)
-      .attr('fill', d => colorScale(Math.random() * 100)) // Random data for now
+      .attr('fill', d => {
+        const name = normalizeName(d.properties && d.properties.name)
+        const val = valueByState.get(name)
+        return typeof val === 'number' ? colorScale(val) : '#eee'
+      })
       .attr('stroke', '#333')
       .attr('stroke-width', 0.5)
       .on('mouseover', function(event, d) {
@@ -247,8 +299,12 @@ function App() {
           .attr('opacity', 0.7)
       })
       .append('title')
-      .text(d => d.properties.name || 'Unknown')
-  }, [])
+      .text(d => {
+        const name = d.properties.name || 'Unknown'
+        const val = valueByState.get(normalizeName(name))
+        return `${name}: ${val !== undefined ? val : 'N/A'} (${labelVar(variable2)})`
+      })
+  }, [csvData, variable2])
 
   // Scatter plot with correlation
   useEffect(() => {
@@ -351,7 +407,7 @@ function App() {
         .style('font-family', 'Manrope, sans-serif')
         .style('font-size', '16px')
         .style('font-weight', 'bold')
-        .text(`${variable2} by State/UT`)
+        .text(`${labelVar(variable2)} by State/UT`)
 
       chartSvg.append('text')
         .attr('x', width / 2)
@@ -370,7 +426,7 @@ function App() {
         .style('font-family', 'Manrope, sans-serif')
         .style('font-size', '13px')
         .style('font-weight', '600')
-        .text(variable2)
+        .text(labelVar(variable2))
 
       return
     }
@@ -546,8 +602,8 @@ function App() {
           d3.select(overlayRef.current).selectAll('*').remove()
         }
       })
-      .append('title')
-      .text(d => `${d.state}\n${variable1}: ${d.x.toFixed(2)}\n${variable2}: ${d.y.toFixed(2)}`)
+  .append('title')
+  .text(d => `${d.state}\n${labelVar(variable1)}: ${d.x.toFixed(2)}\n${labelVar(variable2)}: ${d.y.toFixed(2)}`)
 
     // Add grid lines
     g.append('g')
@@ -590,7 +646,7 @@ function App() {
       .style('font-family', 'Manrope, sans-serif')
       .style('font-size', '16px')
       .style('font-weight', 'bold')
-      .text(`Correlation: ${variable1} vs ${variable2}`)
+  .text(`Correlation: ${labelVar(variable1)} vs ${labelVar(variable2)}`)
 
     // Add correlation coefficient
     chartSvg.append('text')
@@ -610,7 +666,7 @@ function App() {
       .style('font-family', 'Manrope, sans-serif')
       .style('font-size', '13px')
       .style('font-weight', '600')
-      .text(variable1)
+  .text(labelVar(variable1))
 
     // Add y-axis label
     chartSvg.append('text')
@@ -621,7 +677,7 @@ function App() {
       .style('font-family', 'Manrope, sans-serif')
       .style('font-size', '13px')
       .style('font-weight', '600')
-      .text(variable2)
+  .text(labelVar(variable2))
   }, [csvData, variable1, variable2])
 
   return (
@@ -676,11 +732,11 @@ Through data visualization and analysis, we examined complex relationships betwe
   <div ref={containerRef} style={{ position: 'relative', margin: '2rem', border: '2px solid #ddd', borderRadius: '0px', display: 'grid', gridTemplateColumns: '0.6fr 2.4fr', gap: 0 }}>
         <div style={{ borderRight: '2px solid #ddd', display: 'flex', flexDirection: 'column', gap: 0 }}>
           <div style={{ borderBottom: '2px solid #ddd', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1rem', overflow: 'hidden', height: '400px' }}>
-            <h3 style={{ fontFamily: 'Manrope, sans-serif', fontSize: '0.85rem', fontWeight: '600', color: '#4292c6', margin: '0 0 0.5rem 0', textAlign: 'center' }}>{variable1}</h3>
+            <h3 style={{ fontFamily: 'Manrope, sans-serif', fontSize: '0.85rem', fontWeight: '600', color: '#4292c6', margin: '0 0 0.5rem 0', textAlign: 'center' }}>{labelVar(variable1)}</h3>
             <svg ref={svgRef}></svg>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1rem', overflow: 'hidden', height: '400px' }}>
-            <h3 style={{ fontFamily: 'Manrope, sans-serif', fontSize: '0.85rem', fontWeight: '600', color: '#fd8d3c', margin: '0 0 0.5rem 0', textAlign: 'center' }}>{variable2}</h3>
+            <h3 style={{ fontFamily: 'Manrope, sans-serif', fontSize: '0.85rem', fontWeight: '600', color: '#fd8d3c', margin: '0 0 0.5rem 0', textAlign: 'center' }}>{labelVar(variable2)}</h3>
             <svg ref={svgRef2}></svg>
           </div>
         </div>
