@@ -154,16 +154,16 @@ function App() {
     const v2 = row ? parseNum(row[variable2]) : undefined
     const name = displayName(stateCanon)
     return `
-      <div style="font-weight:700;margin-bottom:6px;color:#222">${name}</div>
-      <table style="border-collapse:collapse;font-size:12px;color:#222">
+      <div style="font-weight:700;margin-bottom:4px;color:#222">${name}</div>
+      <table style="border-collapse:collapse;font-size:11px;color:#222">
         <tbody>
           <tr>
-            <td style="padding:2px 8px 2px 0;white-space:nowrap;color:#1769aa">${labelVar(variable1)}</td>
-            <td style="padding:2px 0 2px 8px;text-align:right;font-weight:600">${v1 !== undefined ? v1.toFixed(2) : 'N/A'}</td>
+            <td style="padding:2px 6px 2px 0;white-space:nowrap;color:#1769aa">${labelVar(variable1)}</td>
+            <td style="padding:2px 0 2px 6px;text-align:right;font-weight:600">${v1 !== undefined ? v1.toFixed(2) : 'N/A'}</td>
           </tr>
           <tr>
-            <td style="padding:2px 8px 2px 0;white-space:nowrap;color:#d35400">${labelVar(variable2)}</td>
-            <td style="padding:2px 0 2px 8px;text-align:right;font-weight:600">${v2 !== undefined ? v2.toFixed(2) : 'N/A'}</td>
+            <td style="padding:2px 6px 2px 0;white-space:nowrap;color:#d35400">${labelVar(variable2)}</td>
+            <td style="padding:2px 0 2px 6px;text-align:right;font-weight:600">${v2 !== undefined ? v2.toFixed(2) : 'N/A'}</td>
           </tr>
         </tbody>
       </table>
@@ -1004,11 +1004,13 @@ Through data visualization and analysis, we examined complex relationships betwe
             left: 0,
             transform: 'translate(-9999px, -9999px)',
             display: 'none',
-            background: 'rgba(255,255,255,0.98)',
-            border: '1px solid #ccc',
-            borderRadius: 6,
-            boxShadow: '0 6px 18px rgba(0,0,0,0.18)',
-            padding: '8px 10px',
+            background: 'rgba(255,255,255,0.3)',
+            backdropFilter: 'blur(12px) saturate(120%)',
+            WebkitBackdropFilter: 'blur(12px) saturate(120%)',
+            border: '1px solid rgba(200,200,200,0.5)',
+            borderRadius: 8,
+            boxShadow: '0 10px 24px rgba(0,0,0,0.16)',
+            padding: '6px 8px',
             pointerEvents: 'none',
             zIndex: 10,
             fontFamily: 'Manrope, sans-serif'
