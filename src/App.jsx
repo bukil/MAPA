@@ -10,6 +10,52 @@ function App() {
   const chartRef = useRef(null)
   const containerRef = useRef(null)
   const overlayRef = useRef(null)
+  const dotsRef = useRef(new Map())
+
+  // Helpers shared across effects
+  const normalizeName = (s) => String(s || '')
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/\./g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  const drawProjectile = (from, to, stroke, dotFill) => {
+    const overlayEl = overlayRef.current
+    const containerEl = containerRef.current
+    if (!overlayEl || !containerEl) return
+    d3.select(overlayEl)
+      .attr('width', containerEl.clientWidth)
+      .attr('height', containerEl.clientHeight)
+    const overlay = d3.select(overlayEl)
+    const dx = to.x - from.x
+    const dy = to.y - from.y
+    const dist = Math.hypot(dx, dy)
+    const arc = Math.min(140, Math.max(40, dist * 0.25))
+    const cx = (from.x + to.x) / 2
+    const cy = (from.y + to.y) / 2 - arc
+    const path = overlay.append('path')
+      .attr('d', `M${from.x},${from.y} Q${cx},${cy} ${to.x},${to.y}`)
+      .attr('fill', 'none')
+      .attr('stroke', stroke)
+      .attr('stroke-width', 2)
+      .attr('stroke-dasharray', '6,6')
+      .attr('opacity', 0.95)
+    const len = path.node().getTotalLength()
+    const projectile = overlay.append('circle')
+      .attr('r', 5)
+      .attr('fill', dotFill || stroke)
+      .attr('cx', from.x)
+      .attr('cy', from.y)
+    projectile
+      .transition()
+      .duration(900)
+      .ease(d3.easeCubicOut)
+      .tween('move', () => t => {
+        const p = path.node().getPointAtLength(t * len)
+        projectile.attr('cx', p.x).attr('cy', p.y)
+      })
+  }
   
   const [csvData, setCsvData] = useState([])
   const [variable1, setVariable1] = useState('Literacy Rate %')
@@ -108,12 +154,34 @@ function App() {
       .attr('stroke', '#333')
       .attr('stroke-width', 0.5)
       .on('mouseover', function(event, d) {
-        d3.select(this).attr('stroke-width', 2)
-        d3.select(this).attr('stroke', '#000')
+        d3.select(this).attr('stroke-width', 2).attr('stroke', '#000')
+        const containerEl = containerRef.current
+        const overlayEl = overlayRef.current
+        const dotsMap = dotsRef.current
+        if (!containerEl || !overlayEl || !dotsMap) return
+        const containerRect = containerEl.getBoundingClientRect()
+        const r = this.getBoundingClientRect()
+        const stateCenter = { x: r.left - containerRect.left + r.width / 2, y: r.top - containerRect.top + r.height / 2 }
+        const stateName = normalizeName(d.properties && d.properties.name)
+        const dotInfo = dotsMap.get(stateName)
+        d3.select(overlayEl).selectAll('*').remove()
+        if (dotInfo) {
+          drawProjectile(stateCenter, { x: dotInfo.x, y: dotInfo.y }, '#4292c6', '#4292c6')
+          d3.select(dotInfo.el).attr('r', 10).attr('fill', '#08519c').attr('opacity', 1)
+        }
       })
-      .on('mouseout', function(event, d) {
-        d3.select(this).attr('stroke-width', 0.5)
-        d3.select(this).attr('stroke', '#333')
+      .on('mouseout', function() {
+        d3.select(this).attr('stroke-width', 0.5).attr('stroke', '#333')
+        if (overlayRef.current) d3.select(overlayRef.current).selectAll('*').remove()
+        // reset highlighted dot if any
+        const dotsMap = dotsRef.current
+        if (dotsMap) {
+          // This is a blunt reset of all dots to default visual
+          d3.select(chartRef.current).selectAll('.dot')
+            .attr('r', 6)
+            .attr('fill', '#4292c6')
+            .attr('opacity', 0.7)
+        }
       })
       .append('title')
       .text(d => d.properties.name || 'Unknown')
@@ -154,12 +222,29 @@ function App() {
       .attr('stroke', '#333')
       .attr('stroke-width', 0.5)
       .on('mouseover', function(event, d) {
-        d3.select(this).attr('stroke-width', 2)
-        d3.select(this).attr('stroke', '#000')
+        d3.select(this).attr('stroke-width', 2).attr('stroke', '#000')
+        const containerEl = containerRef.current
+        const overlayEl = overlayRef.current
+        const dotsMap = dotsRef.current
+        if (!containerEl || !overlayEl || !dotsMap) return
+        const containerRect = containerEl.getBoundingClientRect()
+        const r = this.getBoundingClientRect()
+        const stateCenter = { x: r.left - containerRect.left + r.width / 2, y: r.top - containerRect.top + r.height / 2 }
+        const stateName = normalizeName(d.properties && d.properties.name)
+        const dotInfo = dotsMap.get(stateName)
+        d3.select(overlayEl).selectAll('*').remove()
+        if (dotInfo) {
+          drawProjectile(stateCenter, { x: dotInfo.x, y: dotInfo.y }, '#fd8d3c', '#fd8d3c')
+          d3.select(dotInfo.el).attr('r', 10).attr('fill', '#08519c').attr('opacity', 1)
+        }
       })
-      .on('mouseout', function(event, d) {
-        d3.select(this).attr('stroke-width', 0.5)
-        d3.select(this).attr('stroke', '#333')
+      .on('mouseout', function() {
+        d3.select(this).attr('stroke-width', 0.5).attr('stroke', '#333')
+        if (overlayRef.current) d3.select(overlayRef.current).selectAll('*').remove()
+        d3.select(chartRef.current).selectAll('.dot')
+          .attr('r', 6)
+          .attr('fill', '#4292c6')
+          .attr('opacity', 0.7)
       })
       .append('title')
       .text(d => d.properties.name || 'Unknown')
@@ -353,6 +438,18 @@ function App() {
       .attr('opacity', 0.7)
       .attr('stroke', '#2171b5')
       .attr('stroke-width', 1.5)
+      .each(function(d) {
+        // store absolute position for reverse hover
+        const containerEl = containerRef.current
+        if (!containerEl) return
+        const containerRect = containerEl.getBoundingClientRect()
+        const dotRect = this.getBoundingClientRect()
+        const center = {
+          x: dotRect.left - containerRect.left + dotRect.width / 2,
+          y: dotRect.top - containerRect.top + dotRect.height / 2,
+        }
+        dotsRef.current.set(normalizeName(d.state), { x: center.x, y: center.y, el: this })
+      })
       .on('mouseover', function(event, d) {
         d3.select(this)
           .attr('r', 10)
