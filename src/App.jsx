@@ -673,7 +673,7 @@ function App() {
       { x: d3.max(scatterData, d => d.x), y: slope * d3.max(scatterData, d => d.x) + intercept }
     ]
 
-    g.append('line')
+    const regLine = g.append('line')
       .attr('x1', xScale(lineData[0].x))
       .attr('y1', yScale(lineData[0].y))
       .attr('x2', xScale(lineData[1].x))
@@ -840,9 +840,9 @@ function App() {
       })
 
 
-    // Add grid lines
-    g.append('g')
-      .attr('class', 'grid')
+    // Add grid lines (keep refs for zoom updates)
+    const gridY = g.append('g')
+      .attr('class', 'grid grid-y')
       .call(d3.axisLeft(yScale)
         .tickSize(-chartWidth)
         .tickFormat('')
@@ -850,8 +850,8 @@ function App() {
       .style('stroke', '#e0e0e0')
       .style('stroke-opacity', 0.3)
 
-    g.append('g')
-      .attr('class', 'grid')
+    const gridX = g.append('g')
+      .attr('class', 'grid grid-x')
       .attr('transform', `translate(0, ${chartHeight})`)
       .call(d3.axisBottom(xScale)
         .tickSize(-chartHeight)
@@ -860,18 +860,54 @@ function App() {
       .style('stroke', '#e0e0e0')
       .style('stroke-opacity', 0.3)
 
-    // Add x-axis
-    g.append('g')
+    // Add axes (keep refs for zoom updates)
+    const xAxisG = g.append('g')
+      .attr('class', 'axis axis--x')
       .attr('transform', `translate(0, ${chartHeight})`)
       .call(d3.axisBottom(xScale))
       .style('font-family', 'Manrope, sans-serif')
       .style('font-size', '11px')
 
-    // Add y-axis
-    g.append('g')
+    const yAxisG = g.append('g')
+      .attr('class', 'axis axis--y')
       .call(d3.axisLeft(yScale))
       .style('font-family', 'Manrope, sans-serif')
       .style('font-size', '11px')
+
+    // Zoom behavior for dense data
+    const zoom = d3.zoom()
+      .scaleExtent([1, 10])
+      .translateExtent([[0, 0], [chartWidth, chartHeight]])
+      .extent([[0, 0], [chartWidth, chartHeight]])
+      .on('zoom', (event) => {
+        const t = event.transform
+        const zx = t.rescaleX(xScale)
+        const zy = t.rescaleY(yScale)
+        // update dots
+        g.selectAll('.dot')
+          .attr('transform', d => `translate(${zx(d.x)}, ${zy(d.y)})`)
+        // update regression line
+        regLine
+          .attr('x1', zx(lineData[0].x))
+          .attr('y1', zy(lineData[0].y))
+          .attr('x2', zx(lineData[1].x))
+          .attr('y2', zy(lineData[1].y))
+        // update axes
+        xAxisG.call(d3.axisBottom(zx))
+        yAxisG.call(d3.axisLeft(zy))
+        // update grids
+        gridY.call(d3.axisLeft(zy).tickSize(-chartWidth).tickFormat(''))
+        gridX.call(d3.axisBottom(zx).tickSize(-chartHeight).tickFormat(''))
+      })
+
+    // Attach zoom to the whole chart svg to preserve dot hover events
+    chartSvg
+      .call(zoom)
+      .on('dblclick.zoom', null)
+    // Optional: double-click to reset
+    chartSvg.on('dblclick', () => {
+      chartSvg.transition().duration(200).call(zoom.transform, d3.zoomIdentity)
+    })
 
     // Add chart title
     chartSvg.append('text')
