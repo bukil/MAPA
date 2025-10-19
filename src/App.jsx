@@ -43,8 +43,44 @@ function App() {
       ['the national capital territory of delhi', 'delhi'],
       ['delhi nct', 'delhi'],
       ['new delhi', 'delhi'],
+      ['daman & diu', 'daman and diu'],
+      ['daman and dew', 'daman and diu'],
+      ['dnhdd', 'dadra and nagar haveli and daman and diu'],
+      ['dadra & nagar haveli', 'dadra and nagar haveli'],
+      ['dadra & nagar haveli and daman & diu', 'dadra and nagar haveli and daman and diu'],
+      ['dadra and nagar haveli & daman and diu', 'dadra and nagar haveli and daman and diu'],
+      ['dadra and nagar haveli and daman & diu', 'dadra and nagar haveli and daman and diu'],
     ])
     return aliases.get(n) || n
+  }
+
+  // Pretty display names for states/UTs
+  const displayName = (s) => {
+    const c = canonicalName(s)
+    const pretty = new Map([
+      ['andaman and nicobar islands', 'Andaman and Nicobar Islands'],
+      ['dadra and nagar haveli', 'Dadra and Nagar Haveli'],
+      ['daman and diu', 'Daman and Diu'],
+      ['dadra and nagar haveli and daman and diu', 'Dadra and Nagar Haveli and Daman and Diu'],
+      ['puducherry', 'Puducherry'],
+      ['odisha', 'Odisha'],
+      ['arunachal pradesh', 'Arunachal Pradesh'],
+      ['delhi', 'Delhi'],
+    ])
+    return pretty.get(c) || s
+  }
+
+  // Are two canonical names equivalent, considering merged UT DNHDD components?
+  const eqState = (a, b) => {
+    if (!a || !b) return false
+    if (a === b) return true
+    const combo = 'dadra and nagar haveli and daman and diu'
+    const parts = new Set(['dadra and nagar haveli', 'daman and diu'])
+    const aCombo = a === combo
+    const bCombo = b === combo
+    if (aCombo && parts.has(b)) return true
+    if (bCombo && parts.has(a)) return true
+    return false
   }
 
   // UI label: remove year markers like (2025) or 2025
@@ -78,6 +114,8 @@ function App() {
     const projectile = overlay.append('circle')
       .attr('r', 5)
       .attr('fill', dotFill || stroke)
+      .attr('stroke', '#000')
+      .attr('stroke-width', 0.8)
       .attr('cx', from.x)
       .attr('cy', from.y)
     projectile
@@ -239,16 +277,29 @@ function App() {
         const containerRect = containerEl.getBoundingClientRect()
         const r = this.getBoundingClientRect()
         const stateCenter = { x: r.left - containerRect.left + r.width / 2, y: r.top - containerRect.top + r.height / 2 }
-  const stateName = canonicalName(d.properties && d.properties.name)
-        const dotInfo = dotsMap.get(stateName)
+        const stateName = canonicalName(d.properties && d.properties.name)
+        const combo = 'dadra and nagar haveli and daman and diu'
+        let dotInfos = []
+        const direct = dotsMap.get(stateName)
+        if (direct) {
+          dotInfos = [direct]
+        } else if (stateName === 'dadra and nagar haveli' || stateName === 'daman and diu') {
+          const comboInfo = dotsMap.get(combo)
+          if (comboInfo) dotInfos = [comboInfo]
+        } else if (stateName === combo) {
+          const part1 = dotsMap.get('dadra and nagar haveli')
+          const part2 = dotsMap.get('daman and diu')
+          if (part1) dotInfos.push(part1)
+          if (part2) dotInfos.push(part2)
+        }
         d3.select(overlayEl).selectAll('*').remove()
-        if (dotInfo) {
-          drawProjectile(stateCenter, { x: dotInfo.x, y: dotInfo.y }, '#4292c6', '#4292c6')
-          const sel = d3.select(dotInfo.el)
+        dotInfos.forEach(di => {
+          drawProjectile(stateCenter, { x: di.x, y: di.y }, '#4292c6', '#4292c6')
+          const sel = d3.select(di.el)
           const baseT = sel.attr('data-t') || sel.attr('transform')
           sel.raise().attr('transform', `${baseT} scale(1.6)`).style('opacity', 1)
           sel.selectAll('path').attr('stroke-width', 2)
-        }
+        })
       })
       .on('mouseout', function() {
         d3.select(this).attr('stroke-width', 0.5).attr('stroke', '#333')
@@ -268,7 +319,7 @@ function App() {
       })
       .append('title')
       .text(d => {
-        const name = d.properties.name || 'Unknown'
+        const name = displayName(d.properties.name || 'Unknown')
         const val = valueByState.get(canonicalName(name))
         return `${name}: ${val !== undefined ? val : 'N/A'} (${labelVar(variable1)})`
       })
@@ -338,16 +389,29 @@ function App() {
         const containerRect = containerEl.getBoundingClientRect()
         const r = this.getBoundingClientRect()
         const stateCenter = { x: r.left - containerRect.left + r.width / 2, y: r.top - containerRect.top + r.height / 2 }
-  const stateName = canonicalName(d.properties && d.properties.name)
-        const dotInfo = dotsMap.get(stateName)
+        const stateName = canonicalName(d.properties && d.properties.name)
+        const combo = 'dadra and nagar haveli and daman and diu'
+        let dotInfos = []
+        const direct = dotsMap.get(stateName)
+        if (direct) {
+          dotInfos = [direct]
+        } else if (stateName === 'dadra and nagar haveli' || stateName === 'daman and diu') {
+          const comboInfo = dotsMap.get(combo)
+          if (comboInfo) dotInfos = [comboInfo]
+        } else if (stateName === combo) {
+          const part1 = dotsMap.get('dadra and nagar haveli')
+          const part2 = dotsMap.get('daman and diu')
+          if (part1) dotInfos.push(part1)
+          if (part2) dotInfos.push(part2)
+        }
         d3.select(overlayEl).selectAll('*').remove()
-        if (dotInfo) {
-          drawProjectile(stateCenter, { x: dotInfo.x, y: dotInfo.y }, '#fd8d3c', '#fd8d3c')
-          const sel = d3.select(dotInfo.el)
+        dotInfos.forEach(di => {
+          drawProjectile(stateCenter, { x: di.x, y: di.y }, '#fd8d3c', '#fd8d3c')
+          const sel = d3.select(di.el)
           const baseT = sel.attr('data-t') || sel.attr('transform')
           sel.raise().attr('transform', `${baseT} scale(1.6)`).style('opacity', 1)
           sel.selectAll('path').attr('stroke-width', 2)
-        }
+        })
       })
       .on('mouseout', function() {
         d3.select(this).attr('stroke-width', 0.5).attr('stroke', '#333')
@@ -363,7 +427,7 @@ function App() {
       })
       .append('title')
       .text(d => {
-        const name = d.properties.name || 'Unknown'
+        const name = displayName(d.properties.name || 'Unknown')
         const val = valueByState.get(canonicalName(name))
         return `${name}: ${val !== undefined ? val : 'N/A'} (${labelVar(variable2)})`
       })
@@ -613,7 +677,7 @@ function App() {
           let map1Center = null
           d3.select(svgRef.current).selectAll('path').each(function(md) {
             const name = md && md.properties && md.properties.name
-            if (name && canonicalName(name) === canonicalName(d.state)) {
+            if (name && eqState(canonicalName(name), canonicalName(d.state))) {
               const r = this.getBoundingClientRect()
               map1Center = { x: r.left - containerRect.left + r.width / 2, y: r.top - containerRect.top + r.height / 2 }
               d3.select(this).attr('stroke', '#ff0000').attr('stroke-width', 3)
@@ -622,7 +686,7 @@ function App() {
           let map2Center = null
           d3.select(svgRef2.current).selectAll('path').each(function(md) {
             const name = md && md.properties && md.properties.name
-            if (name && canonicalName(name) === canonicalName(d.state)) {
+            if (name && eqState(canonicalName(name), canonicalName(d.state))) {
               const r = this.getBoundingClientRect()
               map2Center = { x: r.left - containerRect.left + r.width / 2, y: r.top - containerRect.top + r.height / 2 }
               d3.select(this).attr('stroke', '#ff0000').attr('stroke-width', 3)
@@ -652,6 +716,8 @@ function App() {
             const projectile = overlay.append('circle')
               .attr('r', 5)
               .attr('fill', dotFill || stroke)
+              .attr('stroke', '#000')
+              .attr('stroke-width', 0.8)
               .attr('cx', from.x)
               .attr('cy', from.y)
 
