@@ -222,11 +222,11 @@ function App() {
         <tbody>
           <tr>
             <td style="padding:2px 6px 2px 0;white-space:nowrap;color:#1769aa">${labelVar(variable1)}</td>
-            <td style="padding:2px 0 2px 6px;text-align:right;font-weight:600">${v1 !== undefined ? v1.toFixed(2) : 'N/A'}</td>
+            <td style="padding:2px 0 2px 6px;text-align:right;font-weight:600">${formatValue(variable1, v1)}</td>
           </tr>
           <tr>
             <td style="padding:2px 6px 2px 0;white-space:nowrap;color:#d35400">${labelVar(variable2)}</td>
-            <td style="padding:2px 0 2px 6px;text-align:right;font-weight:600">${v2 !== undefined ? v2.toFixed(2) : 'N/A'}</td>
+            <td style="padding:2px 0 2px 6px;text-align:right;font-weight:600">${formatValue(variable2, v2)}</td>
           </tr>
         </tbody>
       </table>
@@ -249,7 +249,7 @@ function App() {
               <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:6px;"></span>
               ${labelVar(varLabel)}
             </td>
-            <td style="padding:2px 0 2px 6px;text-align:right;font-weight:600">${v !== undefined ? v.toFixed(2) : 'N/A'}</td>
+            <td style="padding:2px 0 2px 6px;text-align:right;font-weight:600">${formatValue(varLabel, v)}</td>
           </tr>
         </tbody>
       </table>
@@ -284,6 +284,20 @@ function App() {
   const hideTooltip = () => {
     const el = tooltipRef.current
     if (el) el.style.display = 'none'
+  }
+
+  // Value formatting helpers
+  const isCurrencyVar = (label) => /salary/i.test(String(label || ''))
+  const formatValue = (label, v) => {
+    if (v === undefined || v === null || Number.isNaN(v)) return 'N/A'
+    if (isCurrencyVar(label)) {
+      try {
+        return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Number(v))
+      } catch (e) {
+        return `₹ ${Number(v).toLocaleString('en-IN')}`
+      }
+    }
+    return Number(v).toFixed(2)
   }
 
   // Glass badge helpers (HTML) for "other map" window with frost effect
@@ -522,7 +536,7 @@ function App() {
         if (map2Center) {
           const row = rowByState.get(stateName)
           const v = row ? parseNum(row[variable2]) : undefined
-          const valTxt = v !== undefined ? v.toFixed(2) : 'N/A'
+          const valTxt = formatValue(variable2, v)
           showBadgeDiv(map2Center, '#fd8d3c', labelVar(variable2), valTxt, displayName(stateName), 'badge-map2')
         }
   // Tooltip: show only this map's variable to avoid mixing both in one window
@@ -650,7 +664,7 @@ function App() {
         if (map1Center) {
           const row = rowByState.get(stateName)
           const v = row ? parseNum(row[variable1]) : undefined
-          const valTxt = v !== undefined ? v.toFixed(2) : 'N/A'
+          const valTxt = formatValue(variable1, v)
           showBadgeDiv(map1Center, '#4292c6', labelVar(variable1), valTxt, displayName(stateName), 'badge-map1')
         }
   // Tooltip: show only this map's variable to avoid mixing both in one window
