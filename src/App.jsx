@@ -290,6 +290,7 @@ function App() {
 
   // Value formatting helpers
   const isCurrencyVar = (label) => /salary/i.test(String(label || ''))
+  const isPercentVar = (label) => /%/.test(String(label || ''))
   const formatValue = (label, v) => {
     if (v === undefined || v === null || Number.isNaN(v)) return 'N/A'
     if (isCurrencyVar(label)) {
@@ -298,6 +299,9 @@ function App() {
       } catch (e) {
         return `₹ ${Number(v).toLocaleString('en-IN')}`
       }
+    }
+    if (isPercentVar(label)) {
+      return `${Number(v).toFixed(1)}%`
     }
     return Number(v).toFixed(2)
   }
@@ -443,11 +447,7 @@ function App() {
 
     // Convert TopoJSON to GeoJSON
     const geoData = topojson.feature(indiaTopoJSON, indiaTopoJSON.objects.india)
-    
-    const projection = d3.geoMercator()
-      .fitSize([width - padding * 2, height - padding * 2], geoData)
-    const path = d3.geoPath().projection(projection)
-    
+
     // Add a group element with translation for padding
     const g = svg.append('g')
       .attr('transform', `translate(${padding}, ${padding})`)
@@ -474,7 +474,79 @@ function App() {
       .domain(domain)
       .range(['#f7fbff', '#deebf7', '#c6dbef', '#9ecae1', '#6baed6', '#4292c6', '#2171b5', '#08519c', '#08306b'])
 
-    g.selectAll('path')
+    // Legend for Map 1
+    const innerW = width - padding * 2
+    const innerH = height - padding * 2
+    const colors = colorScale.range()
+    const n = colors.length
+  const barH = 8
+    const gap = 0
+    const legendG = g.append('g')
+      .attr('class', 'legend legend-map1')
+      .attr('transform', `translate(0, 0)`)
+      .attr('pointer-events', 'none')
+    // Background panel for contrast
+    legendG.append('rect')
+      .attr('x', -4)
+      .attr('y', 0)
+      .attr('width', innerW + 8)
+      .attr('height', barH + 22)
+      .attr('rx', 6)
+      .attr('fill', 'rgba(255,255,255,0.6)')
+      .attr('stroke', 'none')
+    // Upper legend title removed (variable shown elsewhere)
+    // Build discrete segments to show the full palette used on the map
+    const segW1 = innerW / n
+    colors.forEach((c, i) => {
+      legendG.append('rect')
+        .attr('x', i * segW1)
+        .attr('y', 8)
+        .attr('width', Math.ceil(segW1))
+        .attr('height', barH)
+        .attr('fill', c)
+        .attr('stroke', 'none')
+    })
+    // Vertical section lines inside the bar
+    const boundaries1 = d3.range(1, n).map(i => i * segW1)
+    const ticksG1 = legendG.append('g').attr('class', 'legend-ticks')
+    ticksG1.selectAll('line')
+      .data(boundaries1)
+      .enter()
+      .append('line')
+      .attr('x1', d => d)
+      .attr('x2', d => d)
+      .attr('y1', 6)
+      .attr('y2', 8 + barH + 2)
+      .attr('stroke', '#666')
+      .attr('stroke-opacity', 0.35)
+      .attr('stroke-width', 0.6)
+      .attr('shape-rendering', 'crispEdges')
+    // Min/Max labels with units
+    legendG.append('text')
+      .attr('x', 0)
+      .attr('y', 0)
+      .attr('dominant-baseline', 'hanging')
+      .text(formatValue(variable1, domain[0]))
+      .style('font-family', 'Manrope, sans-serif')
+      .style('font-size', '10px')
+      .attr('fill', '#444')
+    legendG.append('text')
+      .attr('x', innerW)
+      .attr('y', 0)
+      .attr('dominant-baseline', 'hanging')
+      .attr('text-anchor', 'end')
+      .text(formatValue(variable1, domain[1]))
+      .style('font-family', 'Manrope, sans-serif')
+      .style('font-size', '10px')
+      .attr('fill', '#444')
+
+    // Fit projection to remaining space below legend and draw map in a layer offset under the legend
+  const legendOffset = barH + 22 + 2
+    const projection = d3.geoMercator().fitSize([innerW, innerH - legendOffset], geoData)
+    const path = d3.geoPath().projection(projection)
+    const mapLayer = g.append('g').attr('transform', `translate(0, ${legendOffset})`)
+
+    mapLayer.selectAll('path')
       .data(geoData.features)
       .enter()
       .append('path')
@@ -570,6 +642,8 @@ function App() {
           })
         hideTooltip()
       })
+  // Keep the legend on top of map paths
+  legendG.raise()
   }, [csvData, variable1, mapSize])
 
   // Second map: colored by variable2
@@ -585,10 +659,7 @@ function App() {
     // Convert TopoJSON to GeoJSON
     const geoData = topojson.feature(indiaTopoJSON, indiaTopoJSON.objects.india)
     
-    const projection = d3.geoMercator()
-      .fitSize([width - padding * 2, height - padding * 2], geoData)
-    const path = d3.geoPath().projection(projection)
-    
+    // Projection will be defined after legend to account for reserved space
     // Add a group element with translation for padding
     const g = svg.append('g')
       .attr('transform', `translate(${padding}, ${padding})`)
@@ -615,7 +686,79 @@ function App() {
       .domain(domain)
       .range(['#fff5eb', '#fee6ce', '#fdd0a2', '#fdae6b', '#fd8d3c', '#f16913', '#d94801', '#a63603', '#7f2704'])
 
-    g.selectAll('path')
+    // Legend for Map 2
+    const innerW = width - padding * 2
+    const innerH = height - padding * 2
+    const colors = colorScale.range()
+    const n = colors.length
+  const barH = 8
+    const gap = 0
+    const legendG = g.append('g')
+      .attr('class', 'legend legend-map2')
+      .attr('transform', `translate(0, 0)`)
+      .attr('pointer-events', 'none')
+    // Background panel for contrast
+    legendG.append('rect')
+      .attr('x', -4)
+      .attr('y', 0)
+      .attr('width', innerW + 8)
+      .attr('height', barH + 22)
+      .attr('rx', 6)
+      .attr('fill', 'rgba(255,255,255,0.6)')
+      .attr('stroke', 'none')
+    // Upper legend title removed (variable shown elsewhere)
+    // Build discrete segments to show the full palette used on the map
+    const segW2 = innerW / n
+    colors.forEach((c, i) => {
+      legendG.append('rect')
+        .attr('x', i * segW2)
+        .attr('y', 8)
+        .attr('width', Math.ceil(segW2))
+        .attr('height', barH)
+        .attr('fill', c)
+        .attr('stroke', 'none')
+    })
+    // Vertical section lines inside the bar
+    const boundaries2 = d3.range(1, n).map(i => i * segW2)
+    const ticksG2 = legendG.append('g').attr('class', 'legend-ticks')
+    ticksG2.selectAll('line')
+      .data(boundaries2)
+      .enter()
+      .append('line')
+      .attr('x1', d => d)
+      .attr('x2', d => d)
+      .attr('y1', 6)
+      .attr('y2', 8 + barH + 2)
+      .attr('stroke', '#666')
+      .attr('stroke-opacity', 0.35)
+      .attr('stroke-width', 0.6)
+      .attr('shape-rendering', 'crispEdges')
+    // Min/Max labels with units
+    legendG.append('text')
+      .attr('x', 0)
+      .attr('y', 0)
+      .attr('dominant-baseline', 'hanging')
+      .text(formatValue(variable2, domain[0]))
+      .style('font-family', 'Manrope, sans-serif')
+      .style('font-size', '10px')
+      .attr('fill', '#444')
+    legendG.append('text')
+      .attr('x', innerW)
+      .attr('y', 0)
+      .attr('dominant-baseline', 'hanging')
+      .attr('text-anchor', 'end')
+      .text(formatValue(variable2, domain[1]))
+      .style('font-family', 'Manrope, sans-serif')
+      .style('font-size', '10px')
+      .attr('fill', '#444')
+
+    // Fit projection to remaining space below legend and draw map in a layer offset under the legend
+  const legendOffset = barH + 22 + 2
+    const projection = d3.geoMercator().fitSize([innerW, innerH - legendOffset], geoData)
+    const path = d3.geoPath().projection(projection)
+    const mapLayer = g.append('g').attr('transform', `translate(0, ${legendOffset})`)
+
+    mapLayer.selectAll('path')
       .data(geoData.features)
       .enter()
       .append('path')
@@ -704,6 +847,8 @@ function App() {
         hideBadgeDiv('badge-map1')
         hideTooltip()
       })
+  // Keep the legend on top of map paths
+  legendG.raise()
   }, [csvData, variable2, mapSize])
 
   // Scatter plot with correlation
