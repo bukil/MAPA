@@ -360,8 +360,11 @@ function App() {
       setIsMobile(mobile)
       const mapEl = mapBox1Ref.current
       if (mapEl) {
-        const w = Math.max(220, mapEl.clientWidth - 16)
-        const h = mobile ? Math.max(220, Math.round(w * 0.9)) : Math.max(320, Math.round(w * 1.3))
+        const w = Math.max(200, mapEl.clientWidth - 16)
+        // Reduce map height significantly to shrink map boxes
+        const h = mobile
+          ? Math.max(180, Math.round(w * 0.7))
+          : Math.max(240, Math.round(w * 0.9))
         setMapSize({ w, h })
       }
       const chartEl = chartBoxRef.current
@@ -1506,50 +1509,42 @@ We wanted to look beyond numbers — to see if education and wealth actually mak
 Through data visualization and analysis, we examined complex relationships between literacy, salary, gender ratio, crime rates, conviction rates, divorce, domestic violence, and student suicides.</p>
         </div>
         
-      </div>
+  </div>
       
-      {/* Variable Selection Controls */}
-      <div style={{ margin: isMobile ? '1rem' : '2rem', padding: isMobile ? '1rem' : '1.5rem', background: '#f8f9fa', borderRadius: '8px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '1rem' : '2rem' }}>
-          <div>
-            <label style={{ fontFamily: 'Manrope, sans-serif', fontSize: '0.9rem', fontWeight: '600', color: '#333', display: 'block', marginBottom: '0.5rem' }}>
-              Map 1 Variable (Blue):
-            </label>
-            <select 
-              value={variable1} 
-              onChange={(e) => setVariable1(e.target.value)}
-              style={{ width: '100%', padding: '0.75rem', fontFamily: 'Manrope, sans-serif', fontSize: '0.95rem', border: '2px solid #4292c6', borderRadius: '6px', background: '#fff', cursor: 'pointer' }}
-            >
-              {variables.map(v => (
-                <option key={v} value={v}>{v}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label style={{ fontFamily: 'Manrope, sans-serif', fontSize: '0.9rem', fontWeight: '600', color: '#333', display: 'block', marginBottom: '0.5rem' }}>
-              Map 2 Variable (Orange):
-            </label>
-            <select 
-              value={variable2} 
-              onChange={(e) => setVariable2(e.target.value)}
-              style={{ width: '100%', padding: '0.75rem', fontFamily: 'Manrope, sans-serif', fontSize: '0.95rem', border: '2px solid #fd8d3c', borderRadius: '6px', background: '#fff', cursor: 'pointer' }}
-            >
-              {variables.map(v => (
-                <option key={v} value={v}>{v}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
+      {/* Variable Selection Controls moved into individual map boxes below */}
 
   <div ref={containerRef} style={{ position: 'relative', margin: isMobile ? '1rem' : '2rem', border: '2px solid #ddd', borderRadius: '0px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '0.6fr 2.4fr', gap: 0 }}>
         <div style={{ borderRight: isMobile ? 'none' : '2px solid #ddd', display: 'flex', flexDirection: 'column', gap: 0 }}>
-          <div ref={mapBox1Ref} style={{ borderBottom: '2px solid #ddd', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: isMobile ? '0.75rem' : '1rem', overflow: 'hidden', height: mapSize.h + 20 }}>
-            <h3 style={{ fontFamily: 'Manrope, sans-serif', fontSize: '0.85rem', fontWeight: '600', color: '#4292c6', margin: '0 0 0.5rem 0', textAlign: 'center' }}>{labelVar(variable1)}</h3>
+          <div ref={mapBox1Ref} style={{ borderBottom: '2px solid #ddd', display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start', gap: '0.5rem', padding: isMobile ? '0.75rem' : '1rem', overflow: 'hidden', height: mapSize.h + 56 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+              <h3 style={{ flex: '0 1 auto', fontFamily: 'Manrope, sans-serif', fontSize: '0.85rem', fontWeight: '600', color: '#4292c6', margin: 0, textAlign: 'left' }}>{labelVar(variable1)}</h3>
+              <select 
+                value={variable1} 
+                onChange={(e) => setVariable1(e.target.value)}
+                aria-label="Select variable for Map 1"
+                style={{ flex: '1 1 auto', maxWidth: isMobile ? '100%' : '60%', padding: '0.5rem 0.6rem', fontFamily: 'Manrope, sans-serif', fontSize: '0.9rem', border: '2px solid #4292c6', borderRadius: '6px', background: '#fff', cursor: 'pointer' }}
+              >
+                {variables.map(v => (
+                  <option key={v} value={v}>{v}</option>
+                ))}
+              </select>
+            </div>
             <svg ref={svgRef}></svg>
           </div>
-          <div ref={mapBox2Ref} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: isMobile ? '0.75rem' : '1rem', overflow: 'hidden', height: mapSize.h + 20 }}>
-            <h3 style={{ fontFamily: 'Manrope, sans-serif', fontSize: '0.85rem', fontWeight: '600', color: '#fd8d3c', margin: '0 0 0.5rem 0', textAlign: 'center' }}>{labelVar(variable2)}</h3>
+          <div ref={mapBox2Ref} style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start', gap: '0.5rem', padding: isMobile ? '0.75rem' : '1rem', overflow: 'hidden', height: mapSize.h + 56 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+              <h3 style={{ flex: '0 1 auto', fontFamily: 'Manrope, sans-serif', fontSize: '0.85rem', fontWeight: '600', color: '#fd8d3c', margin: 0, textAlign: 'left' }}>{labelVar(variable2)}</h3>
+              <select 
+                value={variable2} 
+                onChange={(e) => setVariable2(e.target.value)}
+                aria-label="Select variable for Map 2"
+                style={{ flex: '1 1 auto', maxWidth: isMobile ? '100%' : '60%', padding: '0.5rem 0.6rem', fontFamily: 'Manrope, sans-serif', fontSize: '0.9rem', border: '2px solid #fd8d3c', borderRadius: '6px', background: '#fff', cursor: 'pointer' }}
+              >
+                {variables.map(v => (
+                  <option key={v} value={v}>{v}</option>
+                ))}
+              </select>
+            </div>
             <svg ref={svgRef2}></svg>
           </div>
         </div>
@@ -1580,6 +1575,24 @@ Through data visualization and analysis, we examined complex relationships betwe
           }}
         />
       </div>
+      {/* Findings section placed after the maps and data visualization */}
+      <section style={{ margin: isMobile ? '1rem' : '2rem', padding: isMobile ? '0.75rem' : '1rem', background: '#f8f9fa', borderRadius: 8 }}>
+        <h2 style={{ fontFamily: 'Manrope, sans-serif', fontWeight: 700, fontSize: '1.1rem', color: '#222', marginTop: 0, marginBottom: '0.5rem' }}>
+          Main question: How does literacy & salary relate to societal evils and crimes?
+        </h2>
+        <ol style={{ marginTop: 0, paddingLeft: '1.2rem', color: '#333' }}>
+          <li>Literacy rate decreases monthly salary (diaspora? more literate people leaving country?)</li>
+          <li>Monthly salary increases crime rate but decreases conviction rate. (wealthier people paying out from the conviction?)</li>
+          <li>Divorce rate moderately increases with literacy (As rich peolpe have option of divorce)</li>
+          <li>Monthly salary also strongly increases student suicides. (parental expectations higher with more parental salary increasing student pressure?)</li>
+          <li>Better Gender Ratio increases crime (sexual harassment?)</li>
+          <li>Literacy rate increases conviction (maybe victims are more educated and complain better)</li>
+          <li>Domestic violence increases student suicides (family problems is listed as a #1 reason for suicides in kids)</li>
+          <li>Salary increase increases the amount of online frauds. (perpetuators target richer people more)</li>
+          <li>Literacy strongly decreases domestic violence ( literate people are more aware)</li>
+        </ol>
+      </section>
+
       <footer style={{ padding: '2rem', textAlign: 'center', fontFamily: 'Manrope, sans-serif', fontSize: '0.75rem', color: '#666', borderTop: '1px solid #ddd', marginTop: '2rem' }}>
         <p style={{ margin: 0, lineHeight: '1.8' }}>
           <a href="https://bukil.github.io/MAPA/" style={{ color: '#4292c6', textDecoration: 'none' }}>Data visualisation on Salary and Societal Issues</a> © 2025 by <a href="https://bukil.github.io/MAPA/" style={{ color: '#4292c6', textDecoration: 'none' }}>MUKIL | ARINDUM | ABHISHEK | PRADUMN</a> is licensed under <a href="https://creativecommons.org/licenses/by/4.0/" style={{ color: '#4292c6', textDecoration: 'none' }}>Creative Commons Attribution 4.0 International</a>
