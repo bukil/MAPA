@@ -1594,6 +1594,9 @@ Through data visualization and analysis, we examined complex relationships betwe
       </section>
 
       <footer style={{ padding: '2rem', textAlign: 'center', fontFamily: 'Manrope, sans-serif', fontSize: '0.75rem', color: '#666', borderTop: '1px solid #ddd', marginTop: '2rem' }}>
+        <div style={{ marginBottom: '0.5rem' }}>
+          Data source: <a href="https://indiadatamap.com/" style={{ color: '#4292c6', textDecoration: 'none' }}>https://indiadatamap.com/</a>
+        </div>
         <p style={{ margin: 0, lineHeight: '1.8' }}>
           <a href="https://bukil.github.io/MAPA/" style={{ color: '#4292c6', textDecoration: 'none' }}>Data visualisation on Salary and Societal Issues</a> © 2025 by <a href="https://bukil.github.io/MAPA/" style={{ color: '#4292c6', textDecoration: 'none' }}>MUKIL | ARINDUM | ABHISHEK | PRADUMN</a> is licensed under <a href="https://creativecommons.org/licenses/by/4.0/" style={{ color: '#4292c6', textDecoration: 'none' }}>Creative Commons Attribution 4.0 International</a>
           <img src="https://mirrors.creativecommons.org/presskit/icons/cc.svg" alt="CC" style={{ maxWidth: '1em', maxHeight: '1em', marginLeft: '.2em', verticalAlign: 'middle' }} />
